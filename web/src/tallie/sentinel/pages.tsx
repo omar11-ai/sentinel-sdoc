@@ -32,6 +32,7 @@ import {
   WarningIcon,
 } from '../components/tallie/icons'
 import { Button } from '@/components/ui/button'
+import { LiveStages, RunProgress, type LiveEvent } from './LiveStages'
 import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
@@ -144,7 +145,7 @@ const tickStyle = { fill: 'var(--muted-foreground)', fontSize: 11 } as const
 /* ---------- OVERVIEW ---------- */
 
 export function OverviewPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) => void }) {
-  const { results, health, llmOn, rerun, selfCheck, loading, scoreboard, recheck } = useSentinel()
+  const { results, health, llmOn, load, selfCheck, loading, scoreboard, recheck } = useSentinel()
   const { navigate } = useDashboardNavigation()
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
@@ -227,12 +228,50 @@ export function OverviewPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) =>
     return buckets
   }, [emails])
 
+  const [runEv, setRunEv] = useState<{ done: number; total: number; email_id: string } | null>(null)
+  const [runStart, setRunStart] = useState(0)
+  const [runDone, setRunDone] = useState<string | null>(null)
+
   async function handleRerun() {
     setBusy(true)
     setNote(null)
-    await rerun()
-    setBusy(false)
-    setNote('Pipeline re-run complete — fresh decisions loaded.')
+    setRunDone(null)
+    setRunEv({ done: 0, total: 520, email_id: '' })
+    setRunStart(performance.now() / 1000)
+    try {
+      const res = await fetch('/api/run/stream', { method: 'POST' })
+      if (!res.ok || !res.body) throw new Error('stream unavailable (' + res.status + ')')
+      const reader = res.body.getReader()
+      const dec = new TextDecoder()
+      let buf = ''
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += dec.decode(value, { stream: true })
+        let i: number
+        while ((i = buf.indexOf('\n')) >= 0) {
+          const line = buf.slice(0, i).trim()
+          buf = buf.slice(i + 1)
+          if (!line) continue
+          const e = JSON.parse(line) as LiveEvent
+          if (e.t === 'progress') setRunEv({ done: e.done ?? 0, total: e.total ?? 520, email_id: e.email_id ?? '' })
+          if (e.t === 'result') {
+            setRunEv(null)
+            setRunDone(`pipeline re-ran live — ${e.emails} fresh decisions in ${e.elapsed_s}s`)
+            await load()
+          }
+          if (e.t === 'error') {
+            setRunEv(null)
+            setRunDone('re-run failed: ' + (e.message ?? 'unknown'))
+          }
+        }
+      }
+    } catch (err) {
+      setRunEv(null)
+      setRunDone('re-run failed: ' + String(err))
+    } finally {
+      setBusy(false)
+    }
   }
   async function handleSelfCheck() {
     setBusy(true)
@@ -268,6 +307,22 @@ export function OverviewPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) =>
           <PlayIcon />
         </Button>
       </PageHeader>
+
+      {runEv ? (
+        <Rise>
+          <section className="glass-card flex flex-col gap-3 p-5">
+            <p className="text-sm font-medium tracking-tight">Re-running the full pipeline — live, one email at a time</p>
+            <RunProgress done={runEv.done} total={runEv.total} emailId={runEv.email_id} startedAt={runStart} finished={null} />
+          </section>
+        </Rise>
+      ) : null}
+      {runDone ? (
+        <Rise>
+          <section className="glass-card flex items-center gap-3 p-5 text-sm font-medium text-(--status-completed)">
+            <span className="text-lg">✓</span> {runDone}
+          </section>
+        </Rise>
+      ) : null}
 
       {note ? (
         <div className="rounded-xl border bg-zinc-50 px-4 py-3 text-sm dark:bg-muted">{note}</div>
@@ -1092,14 +1147,44 @@ function randomFreshCase(): { subject: string; body: string; si: string; bl: str
   }
 }
 
+function formatGenResult(j: Record<string, unknown>): string {
+  const lines: string[] = []
+  lines.push('LLM        │ ' + ((j as { llm_available?: boolean }).llm_available ? 'ON — ' + (j as { llm_provider?: string }).llm_provider : 'not configured — deterministic fallback'))
+  const cls = (j as { classification?: { category?: string; engine?: string; confidence?: number } }).classification
+  lines.push('category   │ ' + cls?.category + '   (engine: ' + cls?.engine + ' · conf ' + Math.round((cls?.confidence ?? 0) * 100) + '%)')
+  const flags = (j as { injection_flags?: string[] }).injection_flags
+  if (flags?.length) lines.push('🛡 injection │ ' + flags.join(', ') + '   → detected, never obeyed')
+  const si = (j as { si?: { engine?: string; coverage?: number; confidence?: number; fields?: Record<string, { display: string }> } | null }).si
+  if (si) {
+    lines.push('SI         │ engine ' + si.engine + ' · coverage ' + si.coverage + '/7 · conf ' + Math.round((si.confidence ?? 0) * 100) + '%')
+    Object.entries(si.fields ?? {}).forEach(([k, v]) => lines.push('   si.' + k.padEnd(18) + ' = ' + String(v.display)))
+  }
+  const bl = (j as { bl?: { engine?: string; coverage?: number; confidence?: number; fields?: Record<string, { display: string }> } | null }).bl
+  if (bl) {
+    lines.push('BL         │ engine ' + bl.engine + ' · coverage ' + bl.coverage + '/7 · conf ' + Math.round((bl.confidence ?? 0) * 100) + '%')
+    Object.entries(bl.fields ?? {}).forEach(([k, v]) => lines.push('   bl.' + k.padEnd(18) + ' = ' + String(v.display)))
+  }
+  const defects = (j as { defects?: { field?: string; si?: unknown; bl?: unknown }[] }).defects
+  if (defects?.length) {
+    lines.push('DEFECTS    │')
+    defects.forEach((d) => lines.push('   ⚠ ' + String(d.field).padEnd(18) + ' SI ' + String(d.si) + '  ≠  BL ' + String(d.bl)))
+  }
+  const rr = (j as { review_reason?: string; details?: string[] }).review_reason
+  if (rr) lines.push('ESCALATED  │ ' + rr + ((j as { details?: string[] }).details ? ' — ' + (j as { details?: string[] }).details!.join('; ') : ''))
+  lines.push('STATUS     │ ' + (j as { status?: string }).status)
+  return lines.join('\n')
+}
+
 export function LabPage() {
-  const { generalize, llmOn } = useSentinel()
+  const { llmOn } = useSentinel()
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
   const [si, setSi] = useState('')
   const [bl, setBl] = useState('')
   const [out, setOut] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [events, setEvents] = useState<LiveEvent[]>([])
+  const [verdict, setVerdict] = useState<string | null>(null)
   const { navigate } = useDashboardNavigation()
 
   function loadSample() {
@@ -1108,38 +1193,55 @@ export function LabPage() {
     setSi(DEMO.si)
     setBl(DEMO.bl)
     setOut(null)
+    setEvents([])
+    setVerdict(null)
   }
 
   async function analyze() {
     setBusy(true)
-    setOut('AI path analyzing…')
+    setOut(null)
+    setVerdict(null)
+    const evs: LiveEvent[] = []
+    const t0 = performance.now()
+    const push = (e: LiveEvent) => {
+      evs.push({ ...e, at: performance.now() / 1000 })
+      setEvents([...evs])
+    }
     try {
-      const j = await generalize({ subject, body, si_text: si, bl_text: bl })
-      const lines: string[] = []
-      lines.push('LLM        │ ' + (j.llm_available ? 'ON — ' + j.llm_provider : 'not configured — deterministic fallback'))
-      lines.push('category   │ ' + j.classification.category + '   (engine: ' + j.classification.engine + ' · conf ' + Math.round((j.classification.confidence ?? 0) * 100) + '%)')
-      if (j.injection_flags?.length) lines.push('🛡 injection │ ' + j.injection_flags.join(', ') + '   → detected, never obeyed')
-      if (j.si) {
-        lines.push('SI         │ engine ' + j.si.engine + ' · coverage ' + j.si.coverage + '/7 · conf ' + Math.round(j.si.confidence * 100) + '%')
-        Object.entries(j.si.fields).forEach(([k, v]) => lines.push('   si.' + k.padEnd(18) + ' = ' + String((v as { display: string }).display)))
+      const res = await fetch('/api/generalize/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, body, si_text: si, bl_text: bl }),
+      })
+      if (!res.ok || !res.body) throw new Error('stream unavailable (' + res.status + ')')
+      const reader = res.body.getReader()
+      const dec = new TextDecoder()
+      let buf = ''
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += dec.decode(value, { stream: true })
+        let i: number
+        while ((i = buf.indexOf('\n')) >= 0) {
+          const line = buf.slice(0, i).trim()
+          buf = buf.slice(i + 1)
+          if (!line) continue
+          const e = JSON.parse(line) as LiveEvent
+          push(e)
+          if (e.t === 'result' && e.result) {
+            setVerdict((e.result as { status?: string }).status ?? null)
+            setOut(formatGenResult(e.result as Record<string, unknown>))
+          }
+          if (e.t === 'error') setOut('stream error: ' + (e.message ?? 'unknown'))
+        }
       }
-      if (j.bl) {
-        lines.push('BL         │ engine ' + j.bl.engine + ' · coverage ' + j.bl.coverage + '/7 · conf ' + Math.round(j.bl.confidence * 100) + '%')
-        Object.entries(j.bl.fields).forEach(([k, v]) => lines.push('   bl.' + k.padEnd(18) + ' = ' + String((v as { display: string }).display)))
-      }
-      if (j.defects?.length) {
-        lines.push('DEFECTS    │')
-        j.defects.forEach((d) => lines.push('   ⚠ ' + String(d.field).padEnd(18) + ' SI ' + String(d.si) + '  ≠  BL ' + String(d.bl)))
-      }
-      if (j.review_reason) lines.push('ESCALATED  │ ' + j.review_reason + (j.details ? ' — ' + j.details.join('; ') : ''))
-      lines.push('STATUS     │ ' + j.status)
-      setOut(lines.join('\n'))
-    } catch (e) {
-      setOut('error: ' + String(e))
+    } catch (err) {
+      setOut('error: ' + String(err))
     } finally {
       setBusy(false)
     }
   }
+
 
   return (
     <div className="flex flex-col gap-8 px-4 py-6 md:px-8 md:py-10">
@@ -1208,6 +1310,27 @@ export function LabPage() {
             or browse the real inbox →
           </Button>
         </div>
+        {events.length ? <LiveStages events={events} /> : null}
+        {verdict && !busy ? (
+          <motion.div
+            initial={{ scale: 0.92, opacity: 0, y: 8 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+            className={
+              'flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-bold ' +
+              (verdict === 'OK'
+                ? 'border-(--status-completed)/30 bg-(--status-completed)/10 text-(--status-completed)'
+                : verdict === 'MISMATCH'
+                  ? 'border-(--status-exception)/30 bg-(--status-exception)/10 text-(--status-exception)'
+                  : 'border-(--status-processing)/30 bg-(--status-processing)/10 text-(--status-processing)')
+            }
+          >
+            <span className="text-lg">✓</span> verdict: {verdict}
+            <span className="font-normal text-muted-foreground">
+              {verdict === 'OK' ? '— No mismatch detected.' : verdict === 'MISMATCH' ? '— documents disagree, evidence above' : '— needs a human reviewer'}
+            </span>
+          </motion.div>
+        ) : null}
         {out ? (
           <pre className="mt-2 max-h-120 overflow-auto rounded-xl border bg-zinc-50 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap dark:bg-muted">
             {out}
@@ -1236,6 +1359,8 @@ export function ArchitecturePage() {
     ['GET /api/emails/{id}', 'one email, complete decision record'],
     ['POST /api/emails/{id}/recheck', 'live AI re-decision of a stored email'],
     ['POST /api/generalize', 'live classification + comparison of any pasted email'],
+    ['POST /api/generalize/stream', 'same, streamed — stage-by-stage NDJSON events as they happen'],
+    ['POST /api/run/stream', 'full 520-email re-run, streamed — one progress event per email'],
     ['POST /api/submit', 'self-check against the official scoring server'],
     ['POST /api/run', 're-run the full pipeline'],
     ['GET /docs', 'interactive Swagger UI (live OpenAPI)'],

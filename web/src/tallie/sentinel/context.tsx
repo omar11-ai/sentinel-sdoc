@@ -139,6 +139,7 @@ type SentinelState = {
   recheck: (id: string) => Promise<RecheckResult>
   generalize: (payload: Record<string, string>) => Promise<GenResult>
   scoreboard: Scoreboard | null
+  load: () => Promise<void>
   applyRecheck: (id: string, r: RecheckResult) => void
   decide: (id: string, decision: 'approve_as_is' | 'flag_mismatch', note?: string) => Promise<void>
 }
@@ -281,6 +282,7 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       generalize,
       applyRecheck,
       decide,
+      load,
     }),
     [health, llmOn, results, scoreboard, loading, error, load, rerun, selfCheck, recheck, generalize, applyRecheck, decide],
   )

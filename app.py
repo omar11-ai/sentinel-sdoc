@@ -7,7 +7,7 @@ from pathlib import Path
 
 import requests
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -478,3 +478,147 @@ def _safe_json(resp: requests.Response):
         return resp.json()
     except json.JSONDecodeError:
         return {"raw": resp.text[:1000]}
+
+
+def _ndjson(obj: dict) -> str:
+    return json.dumps(obj, ensure_ascii=False) + "\n"
+
+
+@app.post("/api/generalize/stream")
+async def generalize_stream(req: GeneralizeReq):
+    """Stage-by-stage LIVE stream of the generalize pipeline (NDJSON).
+    Every line is a real event emitted while the work happens — no faked pacing:
+    the LLM latency itself drives the animation."""
+    import time as _t
+
+    def gen():
+        from classify import classify_email
+        from extract import extract_document as _ext
+        from compare import compare as _cmp
+        from escalate import judge as _judge
+        from sanitize import sanitize_text
+
+        def ev(key, state, label):
+            return {"t": "stage", "key": key, "state": state, "label": label}
+
+        t0 = _t.time()
+
+        def fake_get_bytes(content: str):
+            def _get(_path):
+                return content.encode("utf-8")
+            return _get
+
+        client = LLMClient()
+        email = {"email_id": "pasted", "subject": req.subject, "body": req.body, "attachments": []}
+
+        yield _ndjson(ev("triage", "start", "reading subject & body cues…"))
+        cls = classify_email(client, email)
+        yield _ndjson(ev("triage", "done", f"{cls['category']} · conf {round(cls['confidence']*100)}% · engine {cls['engine']}"))
+
+        result = {"classification": cls, "llm_available": client.available(),
+                  "llm_provider": f"{config.LLM_PROVIDER}:{config.LLM_MODEL}" if client.available() else None}
+
+        yield _ndjson(ev("sanitize", "start", "screening both documents for injection patterns…"))
+        inj_flags: list[str] = []
+        if config.FLAG_SANITIZE:
+            _tx, f_si = sanitize_text(req.si_text or "")
+            _ty, f_bl = sanitize_text(req.bl_text or "")
+            inj_flags = list(dict.fromkeys(f_si + f_bl))
+        result["injection_flags"] = inj_flags
+        yield _ndjson(ev("sanitize", "done", f"🛡 flagged: {', '.join(inj_flags)} — never obeyed" if inj_flags else "clean — no injection patterns"))
+
+        if cls["category"] != "BL_COMPARISON":
+            for k in ("si", "bl", "judge", "compare"):
+                yield _ndjson(ev(k, "skip", "not needed for this category"))
+            result.update({"route": cls["category"], "status": "OK",
+                           "note": "not a document-comparison request — classification only"})
+            yield _ndjson(ev("verdict", "done", f"routed → {cls['category']} · no comparison required"))
+            yield _ndjson({"t": "result", "elapsed_s": round(_t.time() - t0, 1), "result": result})
+            return
+
+        yield _ndjson(ev("si", "start", "extracting 7 canonical fields from SI…"))
+        si_doc = _ext(client, "pasted_SI.txt", fake_get_bytes(req.si_text), client.available(), True) if req.si_text.strip() else None
+        yield _ndjson(ev("si", "done", f"engine {si_doc['engine']} · coverage {si_doc['coverage']}/7 · conf {round(si_doc['confidence']*100)}%") if si_doc else _ndjson(ev("si", "skip", "no SI text provided")))
+
+        yield _ndjson(ev("bl", "start", "extracting 7 canonical fields from BL…"))
+        bl_doc = _ext(client, "pasted_BL.txt", fake_get_bytes(req.bl_text), client.available(), True) if req.bl_text.strip() else None
+        yield _ndjson(ev("bl", "done", f"engine {bl_doc['engine']} · coverage {bl_doc['coverage']}/7 · conf {round(bl_doc['confidence']*100)}%") if bl_doc else _ndjson(ev("bl", "skip", "no BL text provided")))
+
+        blanks: list[str] = []
+        common = 0
+        if si_doc and bl_doc:
+            blanks = sorted(set(si_doc.get("blank_fields", []) + bl_doc.get("blank_fields", [])))
+            sf, bf = si_doc["fields"], bl_doc["fields"]
+            common = sum(1 for f in config.FIELDS
+                         if f in sf and f in bf and not sf[f].get("blank") and not bf[f].get("blank"))
+
+        yield _ndjson(ev("judge", "start", "applying escalation rules (four canonical reasons)…"))
+        esc, canonical, details = _judge(si_doc, bl_doc, 2, "compare", common, blanks, [])
+        if esc:
+            yield _ndjson(ev("judge", "done", f"⚠ escalated — {canonical}: human review needed"))
+            result.update({"status": "NEEDS_REVIEW", "review_reason": canonical, "details": details,
+                           "si": _pub(si_doc) if si_doc else None, "bl": _pub(bl_doc) if bl_doc else None})
+            yield _ndjson(ev("verdict", "done", "NEEDS_REVIEW — handed to a human, never guessed"))
+            yield _ndjson({"t": "result", "elapsed_s": round(_t.time() - t0, 1), "result": result})
+            return
+        yield _ndjson(ev("judge", "done", "no escalation condition met — proceeding to typed comparison"))
+
+        yield _ndjson(ev("compare", "start", "typed field-by-field comparison (SI is reference)…"))
+        if si_doc and bl_doc:
+            cmp_res = _cmp(si_doc, bl_doc)
+            result.update({"status": "MISMATCH" if cmp_res["defects"] else "OK",
+                           "defects": cmp_res["defects"],
+                           "si": _pub(si_doc), "bl": _pub(bl_doc)})
+            if cmp_res["defects"]:
+                ds = " · ".join(f"{d['field']}: SI {d['si']} ≠ BL {d['bl']}" for d in cmp_res["defects"])
+                yield _ndjson(ev("compare", "done", f"{len(cmp_res['defects'])} defect(s) — {ds}"))
+                yield _ndjson(ev("verdict", "done", "MISMATCH — documents disagree"))
+            else:
+                yield _ndjson(ev("compare", "done", "all 7 fields match"))
+                yield _ndjson(ev("verdict", "done", "OK — No mismatch detected."))
+        else:
+            result.update({"status": "NEEDS_REVIEW", "review_reason": "missing_attachment",
+                           "details": ["paste both SI and BL text to compare"]})
+            yield _ndjson(ev("compare", "skip", "need both documents"))
+            yield _ndjson(ev("verdict", "done", "NEEDS_REVIEW — missing document"))
+        yield _ndjson({"t": "result", "elapsed_s": round(_t.time() - t0, 1), "result": result})
+
+    return StreamingResponse(gen(), media_type="application/x-ndjson",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.post("/api/run/stream")
+async def run_stream():
+    """Live progress for the full 520-email batch re-run (NDJSON events,
+    one per processed email + a final summary)."""
+    import queue as _q
+    import threading as _th
+    import time as _tm
+
+    def gen():
+        q: "_q.Queue" = _q.Queue()
+
+        def cb(done, total, eid):
+            q.put({"t": "progress", "done": done, "total": total, "email_id": eid})
+
+        def worker():
+            try:
+                t0 = _tm.time()
+                r = run(Inbox(), progress_cb=cb)
+                _STATE["results"] = r
+                q.put({"t": "result", "emails": len(r.get("emails", [])),
+                       "elapsed_s": round(_tm.time() - t0, 1)})
+            except Exception as e:  # noqa: BLE001
+                q.put({"t": "error", "message": str(e)})
+            finally:
+                q.put(None)
+
+        _th.Thread(target=worker, daemon=True).start()
+        while True:
+            item = q.get()
+            if item is None:
+                break
+            yield _ndjson(item)
+
+    return StreamingResponse(gen(), media_type="application/x-ndjson",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
