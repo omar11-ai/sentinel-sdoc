@@ -59,7 +59,7 @@ body:has(.tallie-dashboard) [data-slot="tooltip-content"] {
 .tallie-dashboard,
 body:has(.tallie-dashboard),
 body:has(.tallie-dashboard) [data-slot="sidebar"][data-mobile="true"] {
-  --font-sans: "Geist", sans-serif;
+  --font-sans: "Almarai", "Geist", sans-serif;
   font-family: "Geist", sans-serif;
   font-weight: 400;
 }
@@ -223,4 +223,61 @@ body:has(.tallie-dashboard) [data-slot="dropdown-menu-content"] [data-slot="drop
   --cs-cream: #e1e0cc;
   --cs-muted: #a39e8b;
   --cs-ink: #0b0a09;
+}
+
+/* ================================================================
+   LIQUID GLASS + PAPER GRAIN (calm, both themes)
+   ================================================================ */
+html:not(.dark) .tallie-dashboard {
+  --background: #faf9f6;
+  --card: rgba(255, 255, 255, 0.72);
+  --secondary: #f1eee7;
+  --muted: #f1eee7;
+  --accent: #efeae0;
+  --sidebar: #f4f2ec;
+}
+.dark .tallie-dashboard {
+  --card: rgba(22, 21, 19, 0.62);
+  --secondary: rgba(255, 255, 255, 0.05);
+  --muted: rgba(255, 255, 255, 0.06);
+  --accent: rgba(255, 255, 255, 0.08);
+}
+.tallie-dashboard .glass-card {
+  background: var(--card);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 10px 30px rgba(24, 20, 12, 0.07);
+}
+.tallie-dashboard.dark .glass-card {
+  border-color: rgba(225, 224, 204, 0.09);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 12px 36px rgba(0, 0, 0, 0.35);
+}
+.glass-bar {
+  background: color-mix(in srgb, var(--background) 78%, transparent);
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+}
+body:has(.tallie-dashboard) [data-slot='sheet-content'],
+body:has(.tallie-dashboard) [data-slot='dropdown-menu-content'],
+body:has(.tallie-dashboard) [data-slot='popover-content'],
+body:has(.tallie-dashboard) [data-slot='tooltip-content'] {
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+}
+body:has(.tallie-dashboard) [data-slot='sheet-content'] {
+  background: color-mix(in srgb, var(--background) 88%, transparent) !important;
+}
+body:has(.tallie-dashboard) [data-slot='dropdown-menu-content'] {
+  background: color-mix(in srgb, var(--popover) 90%, transparent) !important;
+}
+.tallie-dashboard [data-slot='button'] {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 1px 2px rgba(10, 10, 8, 0.10);
+}
+.tallie-dashboard.dark [data-slot='button'] {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.tallie-dashboard {
+  font-family: var(--font-sans);
 }

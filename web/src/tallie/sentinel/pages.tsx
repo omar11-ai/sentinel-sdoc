@@ -1,6 +1,22 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'motion/react'
 import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  RadialBar,
+  RadialBarChart,
+  ResponsiveContainer,
+  Tooltip as RTooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
+import {
   ArrowUpRightIcon,
   ArrowsCounterClockwiseIcon,
   CheckCircleIcon,
@@ -23,7 +39,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import {
   InputGroup,
-  InputGroupAddon,
   InputGroupInput,
 } from '@/components/ui/input-group'
 import {
@@ -38,12 +53,11 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useSentinel, type EmailRecord } from './context'
 import { EmailDetailsSheet } from './EmailSheet'
-import { CinematicHero, CinematicAbout } from './cinematic/Hero'
 import { FeatureCard } from './cinematic/FeatureCard'
 import { useDashboardNavigation } from '../components/tallie/navigation'
 import { cn } from '@/lib/utils'
 
-/* ---------- shared bits (their patterns) ---------- */
+/* ---------- shared bits ---------- */
 
 export function LiveBadge({ live }: { live: boolean }) {
   return (
@@ -69,8 +83,31 @@ const statusConfig: Record<
   NOT_COMPARED: { label: 'Routed', className: 'text-muted-foreground', Icon: ClockIcon },
 }
 
-const tableHeadClassName = 'h-12.5 bg-zinc-50 text-base tracking-tight dark:bg-card'
+const tableHeadClassName = 'h-12.5 bg-transparent text-base tracking-tight'
 const outlineActionClassName = 'h-8.5 gap-1 px-3.5 shadow-xs'
+
+/* rise on scroll into view — things come up / go down gently */
+function Rise({
+  children,
+  delay = 0,
+  className,
+}: {
+  children: React.ReactNode
+  delay?: number
+  className?: string
+}) {
+  return (
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-40px' }}
+      transition={{ duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {children}
+    </motion.div>
+  )
+}
 
 function PageHeader({
   title,
@@ -92,30 +129,88 @@ function PageHeader({
   )
 }
 
-function GrowBar({ w, color, delay = 0, h = 'h-3' }: { w: number; color: string; delay?: number; h?: string }) {
-  return (
-    <div className={cn('flex w-full overflow-hidden rounded-full bg-zinc-200/70 dark:bg-muted', h)}>
-      <motion.i
-        className={cn('block rounded-full', h)}
-        style={{ background: color }}
-        initial={{ width: 0 }}
-        animate={{ width: `${Math.max(1.5, w)}%` }}
-        transition={{ duration: 0.8, delay, ease: [0.25, 0.8, 0.25, 1] }}
-      />
-    </div>
-  )
-}
+const tooltipStyle = {
+  background: 'var(--popover)',
+  border: '1px solid var(--border)',
+  borderRadius: 12,
+  fontSize: 12,
+  color: 'var(--foreground)',
+  boxShadow: '0 10px 30px rgba(0,0,0,.14)',
+} as const
+const tickStyle = { fill: 'var(--muted-foreground)', fontSize: 11 } as const
 
 /* ---------- OVERVIEW ---------- */
 
 export function OverviewPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) => void }) {
   const { results, health, llmOn, rerun, selfCheck, loading } = useSentinel()
-  const { navigate } = useDashboardNavigation()
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
-
   const s = results?.summary
   const emails = results?.emails ?? []
+  const total = Math.max(1, s?.total ?? 1)
+
+  const verdicts = useMemo(
+    () => [
+      { name: 'OK', value: s?.ok ?? 0, color: 'var(--status-completed)' },
+      { name: 'MISMATCH', value: s?.mismatch ?? 0, color: 'var(--status-exception)' },
+      { name: 'NEEDS_REVIEW', value: s?.needs_review ?? 0, color: 'var(--status-processing)' },
+    ],
+    [s],
+  )
+
+  /* cumulative verification timeline across the inbox (real order) */
+  const timeline = useMemo(() => {
+    let ok = 0, mm = 0, esc = 0
+    const pts: { i: number; OK: number; Mismatch: number; Escalated: number }[] = []
+    emails.forEach((e, i) => {
+      if (e.status === 'OK') ok++
+      else if (e.status === 'MISMATCH') mm++
+      else if (e.status === 'NEEDS_REVIEW') esc++
+      if (i % 10 === 9 || i === emails.length - 1)
+        pts.push({ i: i + 1, OK: ok, Mismatch: mm, Escalated: esc })
+    })
+    return pts
+  }, [emails])
+
+  const cats = useMemo(
+    () =>
+      Object.entries(s?.categories ?? {})
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, count]) => ({ name, count })),
+    [s],
+  )
+  const catColors: Record<string, string> = {
+    BL_COMPARISON: 'var(--info)',
+    SI_REQUEST: 'var(--vio)',
+    INVOICE_QUERY: 'var(--status-processing)',
+    GENERAL: '#E89B4A',
+    SPAM: '#9AA3AF',
+  }
+
+  const reasons = useMemo(() => {
+    const rmap: Record<string, number> = {}
+    emails
+      .filter((e) => e.status === 'NEEDS_REVIEW')
+      .forEach((e) => {
+        const r = (e.review_reason ?? 'unknown').split(' — ')[0].trim()
+        rmap[r] = (rmap[r] ?? 0) + 1
+      })
+    return Object.entries(rmap)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => ({ name, count }))
+  }, [emails])
+
+  const histogram = useMemo(() => {
+    const buckets = [
+      { name: '<60%', value: 0 }, { name: '60–69%', value: 0 }, { name: '70–79%', value: 0 },
+      { name: '80–89%', value: 0 }, { name: '90–100%', value: 0 },
+    ]
+    emails.forEach((e) => {
+      const c = (e.category_confidence ?? 0) * 100
+      buckets[c < 60 ? 0 : c < 70 ? 1 : c < 80 ? 2 : c < 90 ? 3 : 4].value++
+    })
+    return buckets
+  }, [emails])
 
   async function handleRerun() {
     setBusy(true)
@@ -137,55 +232,16 @@ export function OverviewPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) =>
   }
 
   const metrics = [
-    { id: 'total', label: 'Emails processed', value: s?.total ?? '—', icon: ClockIcon, trend: 'end-to-end read', tone: 'live' as const },
-    { id: 'ok', label: 'Clean · OK', value: s?.ok ?? '—', icon: SealCheckIcon, trend: 'no defects found', tone: 'up' as const },
-    { id: 'mm', label: 'Mismatches caught', value: s?.mismatch ?? '—', icon: WarningIcon, trend: 'defects with quoted evidence', tone: 'flat' as const },
-    { id: 'esc', label: 'Escalated to human', value: s?.needs_review ?? '—', icon: ArrowsCounterClockwiseIcon, trend: 'never guessed — reasons attached', tone: 'flat' as const },
+    { id: 'total', label: 'Emails processed', value: s?.total ?? '—', icon: ClockIcon, trend: 'end-to-end read' },
+    { id: 'ok', label: 'Clean · OK', value: s?.ok ?? '—', icon: SealCheckIcon, trend: 'no defects found' },
+    { id: 'mm', label: 'Mismatches caught', value: s?.mismatch ?? '—', icon: WarningIcon, trend: 'evidence quoted' },
+    { id: 'esc', label: 'Escalated to human', value: s?.needs_review ?? '—', icon: ArrowsCounterClockwiseIcon, trend: 'never guessed' },
   ]
 
-  const total = Math.max(1, s?.total ?? 1)
-  const dist = [
-    { label: 'OK', v: s?.ok ?? 0, color: 'var(--status-completed)' },
-    { label: 'MISMATCH', v: s?.mismatch ?? 0, color: 'var(--status-exception)' },
-    { label: 'NEEDS_REVIEW', v: s?.needs_review ?? 0, color: 'var(--status-processing)' },
-  ]
-
-  const cats = Object.entries(s?.categories ?? {}).sort((a, b) => b[1] - a[1])
-  const catMax = Math.max(1, ...cats.map(([, v]) => v))
-  const catColors: Record<string, string> = {
-    BL_COMPARISON: 'var(--info)',
-    SI_REQUEST: 'var(--vio)',
-    INVOICE_QUERY: 'var(--status-processing)',
-    GENERAL: '#E89B4A',
-    SPAM: '#9AA3AF',
-  }
-
-  const escEmails = emails.filter((e) => e.status === 'NEEDS_REVIEW')
-  const rmap: Record<string, number> = {}
-  escEmails.forEach((e) => {
-    const r = (e.review_reason ?? 'unknown').split(' — ')[0].trim()
-    rmap[r] = (rmap[r] ?? 0) + 1
-  })
-  const reasons = Object.entries(rmap).sort((a, b) => b[1] - a[1])
-  const rMax = Math.max(1, ...reasons.map(([, v]) => v))
-
-  const buckets = [
-    ['<60%', 0], ['60–69%', 0], ['70–79%', 0], ['80–89%', 0], ['90–100%', 0],
-  ] as [string, number][]
-  emails.forEach((e) => {
-    const c = (e.category_confidence ?? 0) * 100
-    const i = c < 60 ? 0 : c < 70 ? 1 : c < 80 ? 2 : c < 90 ? 3 : 4
-    buckets[i][1]++
-  })
-  const bMax = Math.max(1, ...buckets.map(([, v]) => v))
-
-  const recent = emails.filter((e) => e.status !== 'NOT_COMPARED').slice(-7).reverse()
+  const recent = emails.filter((e) => e.status !== 'NOT_COMPARED').slice(-6).reverse()
 
   return (
     <div className="flex flex-col gap-10 px-4 py-6 md:px-8 md:py-10">
-      <div className="hidden dark:block">
-        <CinematicHero onOpenInbox={() => navigate('/inbox')} />
-      </div>
       <PageHeader title="Document Verification Desk" sub="The full shipping inbox, inspected and adjudicated">
         <LiveBadge live={llmOn} />
         <Button className="h-10 gap-1 px-3.5" disabled={busy || loading} onClick={handleRerun}>
@@ -205,114 +261,206 @@ export function OverviewPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) =>
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-medium">Metrics</h2>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {metrics.map((m) => {
+          {metrics.map((m, i) => {
             const Icon = m.icon
             return (
-              <div key={m.id} className="flex h-37.5 flex-col justify-between rounded-xl border bg-zinc-50 p-4 dark:bg-card">
-                <div className="flex items-start gap-2">
-                  <Icon className="size-5" />
-                  <span className="text-sm font-medium tracking-tight">{m.label}</span>
-                </div>
-                <div className="flex flex-col gap-3">
-                  <p className="text-3xl leading-none font-medium">{m.value}</p>
-                  <div className="flex items-center gap-1 text-xs">
-                    {m.tone === 'up' ? <ArrowUpRightIcon className="size-4 text-(--trend)" /> : null}
-                    {m.tone === 'live' && llmOn ? (
-                      <SpinnerGapIcon className="size-4 animate-spin text-(--status-processing)" />
-                    ) : null}
-                    <span>
-                      <span className="font-medium">{m.value !== '—' ? m.trend : '…'}</span>
-                    </span>
+              <Rise key={m.id} delay={i * 0.06}>
+                <div className="glass-card flex h-37.5 flex-col justify-between p-4">
+                  <div className="flex items-start gap-2">
+                    <Icon className="size-5" />
+                    <span className="text-sm font-medium tracking-tight">{m.label}</span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <p className="text-3xl leading-none font-medium">{m.value}</p>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <ArrowUpRightIcon className="size-4 text-(--trend)" />
+                      {m.trend}
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Rise>
             )
           })}
         </div>
         {health ? (
           <p className="font-mono text-xs text-muted-foreground">
-            engine: {health.llm} · avg confidence {Math.round((s?.avg_confidence ?? 0) * 100)}% · run {results?.elapsed_s ?? '?'}s
+            engine: {health.llm} · avg confidence {Math.round((s?.avg_confidence ?? 0) * 100)}% · run {results?.elapsed_s ?? '?'}s · {results?.generated_at ? new Date(results.generated_at).toLocaleString() : ''}
           </p>
         ) : null}
       </section>
 
-      <div className="hidden dark:block">
-        <CinematicAbout />
-      </div>
+      <Rise>
+        <section className="flex flex-col gap-4">
+          <div className="glass-card p-5">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-lg font-medium">Verification timeline</h2>
+              <p className="text-xs text-muted-foreground">cumulative verdicts, in real inbox order — hover to inspect</p>
+            </div>
+            <div className="mt-3 h-60">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={timeline} margin={{ top: 6, right: 8, left: -18, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gOK" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--status-completed)" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="var(--status-completed)" stopOpacity={0.02} />
+                    </linearGradient>
+                    <linearGradient id="gMM" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--status-exception)" stopOpacity={0.32} />
+                      <stop offset="100%" stopColor="var(--status-exception)" stopOpacity={0.02} />
+                    </linearGradient>
+                    <linearGradient id="gESC" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--status-processing)" stopOpacity={0.32} />
+                      <stop offset="100%" stopColor="var(--status-processing)" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="var(--border)" strokeDasharray="3 6" vertical={false} />
+                  <XAxis dataKey="i" tick={tickStyle} tickLine={false} axisLine={false} minTickGap={60} />
+                  <YAxis tick={tickStyle} tickLine={false} axisLine={false} />
+                  <RTooltip contentStyle={tooltipStyle} labelStyle={{ color: 'var(--muted-foreground)' }} labelFormatter={(i) => `email #${i}`} />
+                  <Area type="monotone" dataKey="OK" stroke="var(--status-completed)" strokeWidth={2} fill="url(#gOK)" animationDuration={1400} />
+                  <Area type="monotone" dataKey="Mismatch" stroke="var(--status-exception)" strokeWidth={2} fill="url(#gMM)" animationDuration={1700} />
+                  <Area type="monotone" dataKey="Escalated" stroke="var(--status-processing)" strokeWidth={2} fill="url(#gESC)" animationDuration={2000} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </section>
+      </Rise>
 
-      <section className="grid gap-3 lg:grid-cols-2">
-        <div className="flex flex-col gap-4 rounded-xl border bg-zinc-50/40 p-5 dark:bg-card/40">
-          <h2 className="text-lg font-medium">Verdict distribution</h2>
-          <div className="flex h-3.5 w-full overflow-hidden rounded-full bg-zinc-200/70 dark:bg-muted">
-            {dist.map((d, i) => (
-              <motion.i
-                key={d.label}
-                className="block h-full"
-                style={{ background: d.color }}
-                initial={{ width: 0 }}
-                animate={{ width: `${((d.v ?? 0) / total) * 100}%` }}
-                transition={{ duration: 0.8, delay: 0.1 + i * 0.12, ease: [0.25, 0.8, 0.25, 1] }}
-              />
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-            {dist.map((d) => (
-              <span key={d.label} className="inline-flex items-center gap-1.5">
-                <i className="size-2 rounded-full" style={{ background: d.color }} />
-                {d.label} {d.v}
-              </span>
-            ))}
-          </div>
-          <h2 className="mt-2 text-lg font-medium">Categories</h2>
-          <div className="flex flex-col gap-2.5">
-            {cats.map(([k, v], i) => (
-              <div key={k} className="flex flex-col gap-1">
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{k}</span>
-                  <b className="text-foreground">{v}</b>
-                </div>
-                <GrowBar w={(v / catMax) * 100} color={catColors[k] ?? '#9AA3AF'} delay={0.1 + i * 0.06} h="h-2" />
+      <section className="grid gap-3 lg:grid-cols-5">
+        <Rise className="lg:col-span-2" delay={0.05}>
+          <div className="glass-card flex h-full flex-col p-5">
+            <h2 className="text-lg font-medium">Verdict split</h2>
+            <div className="relative mt-2 h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <RTooltip contentStyle={tooltipStyle} />
+                  <Pie
+                    data={verdicts}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius="64%"
+                    outerRadius="88%"
+                    paddingAngle={3}
+                    cornerRadius={7}
+                    strokeWidth={0}
+                    animationDuration={1200}
+                  >
+                    {verdicts.map((v) => (
+                      <Cell key={v.name} fill={v.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                <p className="text-3xl font-medium">{s?.total ?? '—'}</p>
+                <p className="text-xs text-muted-foreground">emails judged</p>
               </div>
-            ))}
+            </div>
+            <div className="mt-3 flex flex-wrap justify-center gap-4 text-xs text-muted-foreground">
+              {verdicts.map((v) => (
+                <span key={v.name} className="inline-flex items-center gap-1.5">
+                  <i className="size-2 rounded-full" style={{ background: v.color }} />
+                  {v.name} <b className="text-foreground">{v.value}</b>
+                  <span className="opacity-70">({Math.round((v.value / total) * 100)}%)</span>
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        </Rise>
 
-        <div className="flex flex-col gap-4 rounded-xl border bg-zinc-50/40 p-5 dark:bg-card/40">
-          <h2 className="text-lg font-medium">Reliability — cases humans must see</h2>
-          <div className="flex flex-col gap-2.5">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Escalation reasons — live from this run</p>
-            {reasons.length === 0 ? (
-              <p className="text-sm text-muted-foreground">no escalations</p>
-            ) : (
-              reasons.map(([k, v], i) => (
-                <div key={k} className="flex flex-col gap-1">
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{k}</span>
-                    <b className="text-foreground">{v}</b>
-                  </div>
-                  <GrowBar w={(v / rMax) * 100} color="var(--status-processing)" delay={0.1 + i * 0.06} h="h-2" />
-                </div>
-              ))
-            )}
+        <Rise className="lg:col-span-3" delay={0.1}>
+          <div className="glass-card flex h-full flex-col p-5">
+            <h2 className="text-lg font-medium">Categories</h2>
+            <p className="text-xs text-muted-foreground">how the 520 emails routed</p>
+            <div className="mt-3 h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={cats} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
+                  <CartesianGrid stroke="var(--border)" strokeDasharray="3 6" horizontal={false} />
+                  <XAxis type="number" tick={tickStyle} tickLine={false} axisLine={false} />
+                  <YAxis type="category" dataKey="name" width={118} tick={{ ...tickStyle, fontSize: 10.5 }} tickLine={false} axisLine={false} />
+                  <RTooltip cursor={{ fill: 'var(--muted)', opacity: 0.4 }} contentStyle={tooltipStyle} />
+                  <Bar dataKey="count" radius={[0, 7, 7, 0]} barSize={17} animationDuration={1300}>
+                    {cats.map((c) => (
+                      <Cell key={c.name} fill={catColors[c.name] ?? '#9AA3AF'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div className="mt-2 flex flex-col gap-2.5">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Classifier confidence distribution</p>
-            {buckets.map(([k, v], i) => (
-              <div key={k} className="flex flex-col gap-1">
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{k}</span>
-                  <b className="text-foreground">{v}</b>
-                </div>
-                <GrowBar w={(v / bMax) * 100} color={i < 2 ? 'var(--status-exception)' : 'var(--info)'} delay={0.1 + i * 0.05} h="h-2" />
+        </Rise>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-medium">Reliability — cases humans must see</h2>
+        <div className="grid gap-3 lg:grid-cols-3">
+          <Rise delay={0.05}>
+            <div className="glass-card flex h-full flex-col p-5">
+              <p className="text-sm font-medium tracking-tight">Escalation reasons</p>
+              <p className="text-xs text-muted-foreground">live from this run</p>
+              <div className="mt-3 h-44">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={reasons} layout="vertical" margin={{ top: 0, right: 12, left: 4, bottom: 0 }}>
+                    <XAxis type="number" tick={tickStyle} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <YAxis type="category" dataKey="name" width={122} tick={{ ...tickStyle, fontSize: 10 }} tickLine={false} axisLine={false} />
+                    <RTooltip cursor={{ fill: 'var(--muted)', opacity: 0.4 }} contentStyle={tooltipStyle} />
+                    <Bar dataKey="count" fill="var(--status-processing)" radius={[0, 7, 7, 0]} barSize={15} animationDuration={1200} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-            ))}
-          </div>
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            Low-confidence documents don&apos;t get guessed — the conditional court convenes and borderline cases are escalated.
-            <br />
-            ✓ Verified with the organizers&apos; official scorer:{' '}
-            <b className="text-(--status-completed)">escalation F1 1.0 — 20/20 correct, 5/5 per canonical reason</b>.
-          </p>
+            </div>
+          </Rise>
+
+          <Rise delay={0.1}>
+            <div className="glass-card flex h-full flex-col p-5">
+              <p className="text-sm font-medium tracking-tight">Classifier confidence</p>
+              <p className="text-xs text-muted-foreground">low confidence is escalated, never guessed</p>
+              <div className="mt-3 h-44">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={histogram} margin={{ top: 4, right: 8, left: -22, bottom: 0 }}>
+                    <CartesianGrid stroke="var(--border)" strokeDasharray="3 6" vertical={false} />
+                    <XAxis dataKey="name" tick={{ ...tickStyle, fontSize: 9.5 }} tickLine={false} axisLine={false} />
+                    <YAxis tick={tickStyle} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <RTooltip cursor={{ fill: 'var(--muted)', opacity: 0.4 }} contentStyle={tooltipStyle} />
+                    <Bar dataKey="value" radius={[7, 7, 0, 0]} barSize={26} animationDuration={1300}>
+                      {histogram.map((b, i) => (
+                        <Cell key={b.name} fill={i < 2 ? 'var(--status-exception)' : 'var(--info)'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </Rise>
+
+          <Rise delay={0.15}>
+            <div className="glass-card flex h-full flex-col p-5">
+              <p className="text-sm font-medium tracking-tight">Escalation accuracy</p>
+              <p className="text-xs text-muted-foreground">official scorer, run 20/20 correct</p>
+              <div className="relative mt-3 h-44">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadialBarChart
+                    data={[{ name: 'accuracy', value: 100, fill: 'var(--status-completed)' }]}
+                    innerRadius="72%"
+                    outerRadius="100%"
+                    startAngle={90}
+                    endAngle={-270}
+                  >
+                    <RTooltip contentStyle={tooltipStyle} />
+                    <RadialBar dataKey="value" background={{ fill: 'var(--muted)' }} cornerRadius={12} animationDuration={1600} />
+                  </RadialBarChart>
+                </ResponsiveContainer>
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                  <p className="text-3xl font-medium">F1 1.0</p>
+                  <p className="text-xs text-muted-foreground">5/5 per reason</p>
+                </div>
+              </div>
+              <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                ✓ verified with the organizers&apos; official scorer · breakdown in <code className="font-mono text-[10px]">SCORES.md</code>
+              </p>
+            </div>
+          </Rise>
         </div>
       </section>
 
@@ -322,28 +470,29 @@ export function OverviewPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) =>
           <p className="text-sm text-muted-foreground">Click any row for the complete decision record</p>
         </div>
         <div className="flex flex-col gap-2">
-          {recent.map((e) => {
+          {recent.map((e, i) => {
             const st = statusConfig[e.status] ?? statusConfig.NOT_COMPARED
             const Icon = st.Icon
             return (
-              <button
-                key={e.email_id}
-                type="button"
-                onClick={() => onOpenEmail(e)}
-                className="flex cursor-pointer items-center gap-3 rounded-xl border bg-zinc-50 px-4 py-3 text-left transition-colors hover:bg-muted/60 dark:bg-card"
-              >
-                <span className={cn('inline-flex h-7.5 items-center gap-2 rounded-xl py-1 pr-3 pl-2.5 text-sm font-medium', st.className)}>
-                  <Icon className="size-4" />
-                  {st.label}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium">{e.email_id}</span>
-                  <span className="block truncate text-xs text-muted-foreground">{e.subject}</span>
-                </span>
-                <span className="font-mono text-xs text-muted-foreground">
-                  {(e.defect_fields ?? []).join(',') || (e.review_reason ?? '').split(' — ')[0] || '—'}
-                </span>
-              </button>
+              <Rise key={e.email_id} delay={i * 0.04}>
+                <button
+                  type="button"
+                  onClick={() => onOpenEmail(e)}
+                  className="glass-card flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-transform duration-200 hover:-translate-y-0.5"
+                >
+                  <span className={cn('inline-flex h-7.5 items-center gap-2 rounded-xl py-1 pr-3 pl-2.5 text-sm font-medium', st.className)}>
+                    <Icon className="size-4" />
+                    {st.label}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium">{e.email_id}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{e.subject}</span>
+                  </span>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {(e.defect_fields ?? []).join(',') || (e.review_reason ?? '').split(' — ')[0] || '—'}
+                  </span>
+                </button>
+              </Rise>
             )
           })}
         </div>
@@ -448,7 +597,7 @@ export function InboxPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) => vo
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-xl bg-zinc-50/40 dark:bg-card/40">
+        <div className="glass-card overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -665,7 +814,7 @@ export function LabPage() {
         <LiveBadge live={llmOn} />
       </PageHeader>
 
-      <div className="flex max-w-4xl flex-col gap-3 rounded-xl border bg-zinc-50/40 p-5 dark:bg-card/40">
+      <div className="glass-card flex max-w-4xl flex-col gap-3 p-5">
         <p className="text-sm text-muted-foreground">
           AI-first path (LLM when configured, deterministic fallback otherwise). Documents are treated as untrusted input.
         </p>
@@ -730,22 +879,16 @@ export function ArchitecturePage() {
       <PageHeader title="Architecture" sub="Five layers, one guarantee — and a documented public API" />
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {layers.map((l, i) => (
-          <motion.div
-            key={l.t}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: i * 0.05 }}
-            className="flex flex-col gap-2 rounded-xl border bg-zinc-50 p-4 dark:bg-card"
-          >
+          <FeatureCard key={l.t} index={i} className="glass-card flex flex-col gap-2 p-4">
             <span className="inline-flex items-center gap-2 text-sm font-semibold tracking-wide">
               <i className="size-2.5 rounded-sm" style={{ background: l.c }} />
               {l.t}
             </span>
             <p className="text-sm leading-relaxed text-muted-foreground">{l.p}</p>
-          </motion.div>
+          </FeatureCard>
         ))}
       </section>
-      <section className="flex max-w-3xl flex-col gap-2 rounded-xl border bg-zinc-50/40 p-5 dark:bg-card/40">
+      <section className="glass-card flex max-w-3xl flex-col gap-2 p-5">
         <h2 className="text-lg font-medium">Public API — the backend, documented</h2>
         {api.map(([k, v]) => (
           <div key={k} className="flex items-center justify-between gap-3 border-b border-dashed py-2 text-sm last:border-0">

@@ -74,7 +74,7 @@ export function DashboardTopbar() {
   }, [])
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4 md:h-20 md:px-8">
+    <header className="glass-bar flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4 md:h-20 md:px-8">
       {isMobileSearchOpen ? (
         <div className="flex w-full items-center gap-2 md:hidden">
           <InputGroup className="h-11 flex-1 rounded-lg border-none bg-secondary py-1 pr-2 pl-3">
