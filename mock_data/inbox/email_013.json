@@ -1,0 +1,11 @@
+{
+ "email_id": "email_013",
+ "from": "docs@shipper-co.example",
+ "subject": "URGENT: verify draft BL vs SI for BK-2513",
+ "date": "2026-09-11",
+ "body": "Please compare the attached draft Bill of Lading with the Shipping Instruction and flag any discrepancy. Shipment BK-2513. SI attached for reference.",
+ "attachments": [
+  "si_email_013.txt",
+  "bl_email_013.txt"
+ ]
+}

@@ -1,0 +1,11 @@
+{
+ "email_id": "email_010",
+ "from": "ops@cargo-notify.example",
+ "subject": "Document check request - booking BK-2510",
+ "date": "2026-09-10",
+ "body": "Hi team, please verify the attached draft Bill of Lading against the Shipping Instruction before we finalise. Booking BK-2510. Thanks.",
+ "attachments": [
+  "si_email_010.txt",
+  "bl_email_010.txt"
+ ]
+}

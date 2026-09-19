@@ -1,0 +1,8 @@
+{
+ "email_id": "email_025",
+ "from": "customer@importer.example",
+ "subject": "SI - BK-2525 - DIRECT(ONE)",
+ "date": "2026-09-13",
+ "body": "We need you to prepare a new Shipping Instruction for booking BK-2525. Cargo details: 2 containers of home appliances. Please issue the SI at your earliest.",
+ "attachments": []
+}

@@ -1,0 +1,9 @@
+SHIPPING INSTRUCTION
+Booking ref: BK-2516
+SHIPPER: Maersk Line
+CONSIGNEE: Gulf Star General Trading
+NOTIFY PARTY: Gulf Clearance Services
+PORT OF LOADING: Port Klang, Malaysia
+DISCHARGE PORT: Jebel Ali, UAE
+CONTAINERS: 5
+GW (KG): 12,000 KG

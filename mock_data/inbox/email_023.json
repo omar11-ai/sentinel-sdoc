@@ -1,0 +1,11 @@
+{
+ "email_id": "email_023",
+ "from": "docs@shipper-co.example",
+ "subject": "TO CONFIRM DOCS _ BK-2523",
+ "date": "2026-09-12",
+ "body": "Attached are the SI and draft BL. Please check the details and confirm.",
+ "attachments": [
+  "si_email_023.txt",
+  "bl_email_023.txt"
+ ]
+}

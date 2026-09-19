@@ -1,0 +1,9 @@
+SHIPPING INSTRUCTION
+Booking ref: BK-2519
+SHIPPER: Maersk Line
+CONSIGNEE: Baltic Retail Group
+NOTIFY PARTY: Apex Logistics LLC
+LOAD PORT: Shanghai, China
+PORT OF DISCHARGE: Port Said, Egypt
+NO. OF CONTAINERS: 2
+GW (KG): 22,000 KG

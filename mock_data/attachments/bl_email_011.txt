@@ -1,0 +1,9 @@
+BILL OF LADING — DRAFT (not negotiable)
+B/L no: BK-2511-D1
+SHIPPER: Maersk Line
+CONSIGNEE: Apex Trading FZE
+NOTIFY PARTY: Apex Logistics LLC
+POL: Shanghai, China
+PORT OF DISCHARGE: Karachi, Pakistan
+CONTAINER COUNT: 1
+GROSS WEIGHT (KG): 12,000 KG

@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.cache/
+.env
+# NEVER commit the organizers' private kit or ground truth
+data/
+data_v2/
+uploads/
+submissions/*.local.json

@@ -1,0 +1,9 @@
+SHIPPING INSTRUCTION
+Booking ref: BK-2510
+SHIPPER: Maersk Line
+IMPORTER: Zenith Home Appliances Ltd
+NOTIFY ADDRESS: Apex Logistics, LLC
+LOAD PORT: Singapore
+PORT OF DISCHARGE: Alexandria, Egypt
+TOTAL CONTAINERS: 2
+GROSS WEIGHT: 26,400 KG

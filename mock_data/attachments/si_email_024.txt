@@ -1,0 +1,9 @@
+SHIPPING INSTRUCTION
+Booking ref: BK-2524
+SHIPPER: CMA CGM SA
+CONSIGNEE: Gulf Star General Trading
+NOTIFY ADDRESS: Apex Logistics LLC
+LOAD PORT: Port Klang, Malaysia
+PORT OF DISCHARGE: Port Said, Egypt
+TOTAL CONTAINERS: 4
+GW (KG): 26,400 KG

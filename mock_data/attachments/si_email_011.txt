@@ -1,0 +1,9 @@
+SHIPPING INSTRUCTION
+Booking ref: BK-2511
+SHIPPER: Maersk Line
+CONSIGNEE: Apex Trading FZE
+NOTIFY ADDRESS: Apex Logistics LLC
+LOAD PORT: Shanghai, China
+PORT OF DISCHARGE: Karachi, Pakistan
+NO. OF CONTAINERS: 1
+GROSS WT (KGS): 12,000 KG

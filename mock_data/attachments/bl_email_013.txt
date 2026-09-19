@@ -1,0 +1,9 @@
+BILL OF LADING — DRAFT (not negotiable)
+B/L no: BK-2513-D1
+SHIPPER: CMA CGM SA
+IMPORTER: Sunrise Trading DMCC
+NOTIFY PARTY: Baltic Customs Agency
+LOAD PORT: Rotterdam, Netherlands
+PORT OF DISCHARGE: Jebel Ali, UAE
+CONTAINER COUNT: 3
+GROSS WEIGHT: 8,500 KG

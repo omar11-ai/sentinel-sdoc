@@ -1,0 +1,9 @@
+SHIPPING INSTRUCTION
+Booking ref: BK-2502
+SHIPPER: ONE Network Express
+CONSIGNEE: Nile Import & Export Co
+NOTIFY: Apex Logistics LLC
+PORT OF LOADING: Jebel Ali, UAE
+PORT OF DISCHARGE: Alexandria, Egypt
+TOTAL CONTAINERS: 3
+GROSS WEIGHT (KG): 17,500 KG

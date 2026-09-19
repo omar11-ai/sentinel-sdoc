@@ -1,0 +1,9 @@
+SHIPPING INSTRUCTION
+Booking ref: BK-2512
+SHIPPER: Maersk Line
+CONSIGNEE: Gulf Star General Trading
+NOTIFY PARTY: Apex Logistics, LLC
+POL: Shanghai, China
+PORT OF DISCHARGE: Alexandria, Egypt
+TOTAL CONTAINERS: 4
+GROSS WT (KGS): 12,000 KG

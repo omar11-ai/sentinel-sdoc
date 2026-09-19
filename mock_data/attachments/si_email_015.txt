@@ -1,0 +1,9 @@
+SHIPPING INSTRUCTION
+Booking ref: BK-2515
+SHIPPER: Maersk Line
+IMPORTER: Baltic Retail Group
+NOTIFY: Baltic Customs Agency
+LOAD PORT: Rotterdam, Netherlands
+POD: Jebel Ali, UAE
+CONTAINER COUNT: 1
+GROSS WEIGHT: 26,400 KG

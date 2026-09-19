@@ -1,0 +1,9 @@
+SHIPPING INSTRUCTION
+Booking ref: BK-2520
+SHIPPER: Maersk Line
+IMPORTER: Apex Trading FZE
+NOTIFY ADDRESS: Gulf Clearance Services
+PORT OF LOADING: Jebel Ali, UAE
+POD: Colombo, Sri Lanka
+TOTAL CONTAINERS: 3
+GROSS WEIGHT (KG): 8,500 KG

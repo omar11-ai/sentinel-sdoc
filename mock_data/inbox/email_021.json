@@ -1,0 +1,11 @@
+{
+ "email_id": "email_021",
+ "from": "agents@port-link.example",
+ "subject": "BL check — attachment issue? booking BK-2521",
+ "date": "2026-09-12",
+ "body": "Requesting document check of the draft Bill of Lading against the attached Shipping Instruction for booking BK-2521. Our system had issues exporting, please confirm you can open it.",
+ "attachments": [
+  "si_email_021.txt",
+  "bl_email_021.txt"
+ ]
+}

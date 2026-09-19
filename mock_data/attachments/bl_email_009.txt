@@ -1,0 +1,9 @@
+BILL OF LADING — DRAFT (not negotiable)
+B/L no: BK-2509-D1
+SHIPPER: Hapag-Lloyd AG
+IMPORTER: Nile Import & Export Co
+NOTIFY PARTY: Nile Freight Handling
+LOAD PORT: Rotterdam, Netherlands
+PORT OF DISCHARGE: Alexandria, Egypt
+CONTAINER COUNT: 1
+GROSS WT (KGS): 12,000 KG

@@ -1,0 +1,9 @@
+BILL OF LADING — DRAFT (not negotiable)
+B/L no: BK-2502-D1
+SHIPPER: ONE Network Express
+CONSIGNEE: Nile Import & Export Co
+NOTIFY: Apex Logistics LLC
+PORT OF LOADING: Jebel Ali, UAE
+PORT OF DISCHARGE: Alexandria, Egypt
+CONTAINER COUNT: 3
+GW (KG): 17,500 KG

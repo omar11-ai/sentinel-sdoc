@@ -1,0 +1,11 @@
+{
+ "email_id": "email_022",
+ "from": "clerk@freight-desk.example",
+ "subject": "Partial SI — please still check BL for BK-2522",
+ "date": "2026-09-12",
+ "body": "Only got a partial shipping instruction for this one, checking the draft bill of lading anyway. Booking BK-2522.",
+ "attachments": [
+  "si_email_022.txt",
+  "bl_email_022.txt"
+ ]
+}

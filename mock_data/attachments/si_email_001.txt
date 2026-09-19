@@ -1,0 +1,9 @@
+SHIPPING INSTRUCTION
+Booking ref: BK-2501
+SHIPPER: Maersk Line
+IMPORTER: Apex Trading FZE
+NOTIFY PARTY: Gulf Clearance Services
+POL: Jebel Ali, UAE
+PORT OF DISCHARGE: Port Said, Egypt
+CONTAINER COUNT: 2
+GROSS WEIGHT (KG): 30,800 KG

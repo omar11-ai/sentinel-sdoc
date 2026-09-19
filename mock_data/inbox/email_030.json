@@ -1,0 +1,8 @@
+{
+ "email_id": "email_030",
+ "from": "ar@vendor-freight.example",
+ "subject": "Invoice INV-9001 outstanding balance",
+ "date": "2026-09-14",
+ "body": "Dear operations team, our invoice INV-9001 for handling charges is still outstanding. Could you confirm the payment date with your finance department?",
+ "attachments": []
+}

@@ -1,0 +1,9 @@
+BILL OF LADING — DRAFT (not negotiable)
+B/L no: BK-2505-D1
+EXPORTER: MSC Mediterranean
+IMPORTER: Apex Trading FZE
+NOTIFY: Apex Logistics, LLC
+POL: Rotterdam, Netherlands
+PORT OF DISCHARGE: Karachi, Pakistan
+CONTAINERS: 2
+GROSS WEIGHT: 30,800 KG

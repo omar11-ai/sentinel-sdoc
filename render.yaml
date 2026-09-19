@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: sentinel-sdoc
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: SENTINEL_USE_LLM
+        value: auto
+      - key: SENTINEL_ADVERSARIAL_MODE
+        value: advisory

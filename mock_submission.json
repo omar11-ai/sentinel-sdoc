@@ -1,0 +1,282 @@
+{
+  "email_001": {
+    "category": "BL_COMPARISON",
+    "status": "MATCH",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_002": {
+    "category": "BL_COMPARISON",
+    "status": "MATCH",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_003": {
+    "category": "BL_COMPARISON",
+    "status": "MATCH",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_004": {
+    "category": "BL_COMPARISON",
+    "status": "MATCH",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_005": {
+    "category": "BL_COMPARISON",
+    "status": "MATCH",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_006": {
+    "category": "BL_COMPARISON",
+    "status": "MATCH",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_007": {
+    "category": "BL_COMPARISON",
+    "status": "MATCH",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_008": {
+    "category": "BL_COMPARISON",
+    "status": "MATCH",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_009": {
+    "category": "BL_COMPARISON",
+    "status": "MATCH",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_010": {
+    "category": "BL_COMPARISON",
+    "status": "MATCH",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_011": {
+    "category": "BL_COMPARISON",
+    "status": "MATCH",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_012": {
+    "category": "BL_COMPARISON",
+    "status": "MATCH",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_013": {
+    "category": "BL_COMPARISON",
+    "status": "MISMATCH",
+    "review_reason": null,
+    "has_defect": true,
+    "defect_fields": [
+      "consignee"
+    ]
+  },
+  "email_014": {
+    "category": "BL_COMPARISON",
+    "status": "MISMATCH",
+    "review_reason": null,
+    "has_defect": true,
+    "defect_fields": [
+      "container_count"
+    ]
+  },
+  "email_015": {
+    "category": "BL_COMPARISON",
+    "status": "MISMATCH",
+    "review_reason": null,
+    "has_defect": true,
+    "defect_fields": [
+      "gross_weight_kg"
+    ]
+  },
+  "email_016": {
+    "category": "BL_COMPARISON",
+    "status": "MISMATCH",
+    "review_reason": null,
+    "has_defect": true,
+    "defect_fields": [
+      "port_of_loading"
+    ]
+  },
+  "email_017": {
+    "category": "BL_COMPARISON",
+    "status": "MISMATCH",
+    "review_reason": null,
+    "has_defect": true,
+    "defect_fields": [
+      "notify_party"
+    ]
+  },
+  "email_018": {
+    "category": "BL_COMPARISON",
+    "status": "MISMATCH",
+    "review_reason": null,
+    "has_defect": true,
+    "defect_fields": [
+      "port_of_discharge"
+    ]
+  },
+  "email_019": {
+    "category": "BL_COMPARISON",
+    "status": "MISMATCH",
+    "review_reason": null,
+    "has_defect": true,
+    "defect_fields": [
+      "shipper"
+    ]
+  },
+  "email_020": {
+    "category": "BL_COMPARISON",
+    "status": "NEEDS_REVIEW",
+    "review_reason": "BL unreadable: no recognizable fields in draft BL; low field coverage: only 0/7 fields extractable from both documents",
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_021": {
+    "category": "BL_COMPARISON",
+    "status": "NEEDS_REVIEW",
+    "review_reason": "BL unreadable: no recognizable fields in draft BL; low field coverage: only 0/7 fields extractable from both documents",
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_022": {
+    "category": "BL_COMPARISON",
+    "status": "NEEDS_REVIEW",
+    "review_reason": "low field coverage: only 1/7 fields extractable from both documents",
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_023": {
+    "category": "NEW_SI_REQUEST",
+    "status": "NOT_COMPARED",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_024": {
+    "category": "NEW_SI_REQUEST",
+    "status": "NOT_COMPARED",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_025": {
+    "category": "NEW_SI_REQUEST",
+    "status": "NOT_COMPARED",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_026": {
+    "category": "NEW_SI_REQUEST",
+    "status": "NOT_COMPARED",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_027": {
+    "category": "INVOICE_QUERY",
+    "status": "NOT_COMPARED",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_028": {
+    "category": "INVOICE_QUERY",
+    "status": "NOT_COMPARED",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_029": {
+    "category": "INVOICE_QUERY",
+    "status": "NOT_COMPARED",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_030": {
+    "category": "INVOICE_QUERY",
+    "status": "NOT_COMPARED",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_031": {
+    "category": "GENERAL",
+    "status": "NOT_COMPARED",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_032": {
+    "category": "GENERAL",
+    "status": "NOT_COMPARED",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_033": {
+    "category": "GENERAL",
+    "status": "NOT_COMPARED",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_034": {
+    "category": "GENERAL",
+    "status": "NOT_COMPARED",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_035": {
+    "category": "SPAM",
+    "status": "NOT_COMPARED",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_036": {
+    "category": "SPAM",
+    "status": "NOT_COMPARED",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_037": {
+    "category": "SPAM",
+    "status": "NOT_COMPARED",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "email_038": {
+    "category": "SPAM",
+    "status": "NOT_COMPARED",
+    "review_reason": null,
+    "has_defect": false,
+    "defect_fields": []
+  }
+}

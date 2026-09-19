@@ -1,0 +1,9 @@
+SHIPPING INSTRUCTION
+Booking ref: BK-2523
+SHIPPER: MSC Mediterranean
+CONSIGNEE: Gulf Star General Trading
+NOTIFY PARTY: Nile Freight Handling
+POL: Rotterdam, Netherlands
+DISCHARGE PORT: Colombo, Sri Lanka
+CONTAINER COUNT: 3
+GROSS WEIGHT (KG): ???
