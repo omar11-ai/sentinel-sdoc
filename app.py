@@ -126,6 +126,15 @@ async def generalize(req: GeneralizeReq):
     result = {"classification": cls, "llm_available": client.available(),
               "llm_provider": f"{config.LLM_PROVIDER}:{config.LLM_MODEL}" if client.available() else None}
 
+    # prompt-injection screening on pasted documents (untrusted input!)
+    from sanitize import sanitize_text
+    inj_flags: list[str] = []
+    if config.FLAG_SANITIZE:
+        _t, f_si = sanitize_text(req.si_text or "")
+        _t2, f_bl = sanitize_text(req.bl_text or "")
+        inj_flags = list(dict.fromkeys(f_si + f_bl))
+    result["injection_flags"] = inj_flags
+
     if cls["category"] != "BL_COMPARISON":
         result.update({"route": cls["category"], "status": "OK",
                        "note": "not a document-comparison request — classification only"})
