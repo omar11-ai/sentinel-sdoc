@@ -32,7 +32,6 @@ import {
   WarningIcon,
 } from '../components/tallie/icons'
 import { Button } from '@/components/ui/button'
-import { MetalButton } from '@/components/spectrumui/metal-button'
 import { LiveStages, RunProgress, type LiveEvent } from './LiveStages'
 import { Input } from '@/components/ui/input'
 import {
@@ -299,10 +298,10 @@ export function OverviewPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) =>
     <div className="flex flex-col gap-10 px-4 py-6 md:px-8 md:py-10">
       <PageHeader title="Document Verification Desk" sub="The full shipping inbox, inspected and adjudicated">
         <LiveBadge live={llmOn} />
-        <MetalButton preset="silver" size="sm" disabled={busy || loading} onClick={handleRerun}>
+        <Button className="h-10 gap-1 px-4" disabled={busy || loading} onClick={handleRerun}>
           Re-run
           <ArrowsCounterClockwiseIcon />
-        </MetalButton>
+        </Button>
         <Button variant="outline" className="h-10 gap-1 px-3.5 shadow-sm" disabled={busy || loading} onClick={handleSelfCheck}>
           Self-Check
           <PlayIcon />
@@ -559,9 +558,8 @@ export function OverviewPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) =>
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <MetalButton
-                preset="chromatic"
-                size="sm"
+              <Button
+                className="h-10 gap-1 px-4"
                 onClick={async () => {
                   setAiProof('⚡ Live re-decision running on the hardest document pair (email_313, twin PDFs) — the LLM is reading it now…')
                   try {
@@ -578,7 +576,7 @@ export function OverviewPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) =>
                 }}
               >
                 ⚡ Re-decide email_313 with AI
-              </MetalButton>
+              </Button>
               <Button variant="outline" className="h-10 gap-1 px-3.5 shadow-sm" onClick={() => navigate('/lab')}>
                 Open Generalize Lab
                 <PlayIcon />
@@ -1301,10 +1299,10 @@ export function LabPage() {
         <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">BL — draft bill of lading</p>
         <Textarea className="min-h-45 rounded-lg border-none bg-background font-mono text-xs" placeholder="BL document text…" value={bl} onChange={(e) => setBl(e.target.value)} />
         <div className="flex items-center gap-3 pt-1">
-          <MetalButton preset="silver" size="sm" className="h-10 gap-1 px-3.5" disabled={busy} onClick={analyze}>
+          <Button className="h-10 gap-1.5 px-5" disabled={busy} onClick={analyze}>
             {busy ? 'Analyzing…' : 'Analyze'}
             <PlayIcon />
-          </MetalButton>
+          </Button>
           <Button variant="outline" className="h-10 gap-1 px-3.5 shadow-sm" onClick={loadSample}>
             Load sample
           </Button>
