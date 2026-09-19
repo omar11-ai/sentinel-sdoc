@@ -3,6 +3,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
+# participant bundle (public dataset) baked into the image — zero external setup
+ENV SENTINEL_DATA=/app/data
 ENV PORT=8000
 EXPOSE 8000
 HEALTHCHECK --interval=60s --timeout=5s CMD python -c "import requests;requests.get('http://127.0.0.1:'+__import__('os').environ.get('PORT','8000')+'/api/health').raise_for_status()" || exit 1
