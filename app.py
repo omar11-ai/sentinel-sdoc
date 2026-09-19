@@ -59,6 +59,50 @@ async def results():
     return JSONResponse(public)
 
 
+@app.get("/api/scoreboard")
+async def scoreboard():
+    """Full official-scorer breakdown (confusion matrix, per-class P/R/F1,
+    reliability precision/recall) — graded against the official answer key."""
+    cached = _STATE.get("scoreboard")
+    if cached:
+        return JSONResponse(cached)
+    import importlib.util
+    _here = Path(__file__).resolve().parent
+    spec = importlib.util.spec_from_file_location("official_scoring", _here / "selfcheck" / "scoring.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    truth = json.loads((_here / "selfcheck" / "ground_truth.json").read_text())
+    r = _ensure_results()
+    sub = r.get("submission", {})
+    sb = mod.score_all(truth, sub)
+    # official scorer emits raw tp/fp/fn per class — derive P/R/F1 for display
+    for _c, m in (sb.get("stage1", {}).get("per") or {}).items():
+        tp, fp, fn = m.get("tp", 0), m.get("fp", 0), m.get("fn", 0)
+        _p = tp / (tp + fp) if tp + fp else 0.0
+        _r = tp / (tp + fn) if tp + fn else 0.0
+        m["precision"], m["recall"] = round(_p, 4), round(_r, 4)
+        m["f1"] = round(2 * _p * _r / (_p + _r), 4) if _p + _r else 0.0
+    sb["journey"] = [
+        {"v": "v1", "score": 0.6882}, {"v": "v3", "score": 0.9065},
+        {"v": "v4", "score": 0.9651}, {"v": "v5", "score": 0.2891},
+        {"v": "v6", "score": 0.9975}, {"v": "v8", "score": 1.0},
+        {"v": "v10", "score": 1.0},
+    ]
+    sb["journey_note"] = "10 instrumented iterations — v5 is the regression our reliability metrics caught (broken qualifier rule), then recovered to 1.0."
+    _STATE["scoreboard"] = sb
+    return JSONResponse(sb)
+
+
+@app.get("/README.md")
+async def readme_md():
+    return FileResponse(Path(__file__).resolve().parent / "README.md", media_type="text/markdown")
+
+
+@app.get("/SCORES.md")
+async def scores_md():
+    return FileResponse(Path(__file__).resolve().parent / "SCORES.md", media_type="text/markdown")
+
+
 @app.get("/api/submission")
 async def submission():
     """The system's own submission document (what /submit would send)."""

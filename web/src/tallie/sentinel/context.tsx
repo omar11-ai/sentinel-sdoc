@@ -96,6 +96,18 @@ export type RecheckResult = {
 
 export type GenResult = RecheckResult & { [k: string]: unknown }
 
+export type Scoreboard = {
+  stage1: { accuracy: number; macro_f1: number; per: Record<string, { precision: number; recall: number; f1: number }>; confusion: Record<string, Record<string, number>> }
+  stage3: { defect_precision: number; defect_recall: number; defect_f1: number; [k: string]: unknown }
+  reliability: { escalation_precision: number; escalation_recall: number; escalation_f1?: number; [k: string]: unknown }
+  end_to_end: { rate: number; success: number; total: number; [k: string]: unknown }
+  final_score: number
+  journey: { v: string; score: number }[]
+  journey_note: string
+  n_emails: number
+  [k: string]: unknown
+}
+
 async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init)
   if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`)
@@ -115,6 +127,7 @@ type SentinelState = {
   selfCheck: () => Promise<string>
   recheck: (id: string) => Promise<RecheckResult>
   generalize: (payload: Record<string, string>) => Promise<GenResult>
+  scoreboard: Scoreboard | null
 }
 
 const SentinelContext = createContext<SentinelState | null>(null)
@@ -122,6 +135,7 @@ const SentinelContext = createContext<SentinelState | null>(null)
 export function SentinelProvider({ children }: { children: ReactNode }) {
   const [health, setHealth] = useState<SentinelState['health']>(null)
   const [results, setResults] = useState<Results | null>(null)
+  const [scoreboard, setScoreboard] = useState<Scoreboard | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -135,6 +149,7 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       ])
       setHealth(h)
       setResults(r)
+      getJson<Scoreboard>('/api/scoreboard').then(setScoreboard).catch(() => {})
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -197,6 +212,7 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       health,
       llmOn,
       results,
+      scoreboard,
       loading,
       error,
       reload: load,
@@ -205,7 +221,7 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       recheck,
       generalize,
     }),
-    [health, llmOn, results, loading, error, load, rerun, selfCheck, recheck, generalize],
+    [health, llmOn, results, scoreboard, loading, error, load, rerun, selfCheck, recheck, generalize],
   )
 
   return <SentinelContext.Provider value={value}>{children}</SentinelContext.Provider>

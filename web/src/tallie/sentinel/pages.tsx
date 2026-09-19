@@ -11,6 +11,8 @@ import {
   PieChart,
   RadialBar,
   RadialBarChart,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip as RTooltip,
   XAxis,
@@ -54,7 +56,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useSentinel, type EmailRecord } from './context'
 import { EmailDetailsSheet } from './EmailSheet'
 import { FeatureCard } from './cinematic/FeatureCard'
-import { useDashboardNavigation } from '../components/tallie/navigation'
+import { useDashboardNavigation, DashboardLink } from '../components/tallie/navigation'
 import { cn } from '@/lib/utils'
 
 /* ---------- shared bits ---------- */
@@ -142,9 +144,14 @@ const tickStyle = { fill: 'var(--muted-foreground)', fontSize: 11 } as const
 /* ---------- OVERVIEW ---------- */
 
 export function OverviewPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) => void }) {
-  const { results, health, llmOn, rerun, selfCheck, loading } = useSentinel()
+  const { results, health, llmOn, rerun, selfCheck, loading, scoreboard, recheck } = useSentinel()
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
+  const [aiProof, setAiProof] = useState<string | null>(null)
+  const shortName: Record<string, string> = { BL_COMPARISON: 'BL', INVOICE_QUERY: 'INV', SI_REQUEST: 'SI', GENERAL: 'GEN', SPAM: 'SPAM' }
+  const f2 = (x: number | undefined) => (typeof x === 'number' ? x.toFixed(2) : '—')
+  const f3 = (x: number | undefined) => (typeof x === 'number' ? x.toFixed(3) : '—')
+
   const s = results?.summary
   const emails = results?.emails ?? []
   const total = Math.max(1, s?.total ?? 1)
@@ -463,6 +470,147 @@ export function OverviewPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) =>
           </Rise>
         </div>
       </section>
+
+      <Rise>
+        <section className="glass-card flex flex-col gap-4 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-medium">Prove the AI works — live</h2>
+              <p className="text-sm text-muted-foreground">
+                Bulk runs use the deterministic engine on purpose (reproducible & free). Interactive requests are AI-first — try both, right here.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                className="h-10 gap-1 px-3.5"
+                onClick={async () => {
+                  setAiProof('⚡ Live re-decision running on the hardest document pair (email_313, twin PDFs) — the LLM is reading it now…')
+                  try {
+                    const j = await recheck('email_313')
+                    setAiProof(
+                      `classifier: ${j.batch.classifier_engine} → ${j.classification.engine} · ` +
+                      (j.bl ? `BL engine: ${j.bl.engine} · ` : '') +
+                      (j.defects?.length ? j.defects.map((d) => `${d.field} ${String(d.si)}≠${String(d.bl)}`).join(' · ') + ' · ' : '') +
+                      `${j.elapsed_s ?? '?'}s — verdict ${j.status} ${j.status === j.batch.status ? 'confirmed by AI ✓' : 'differs'}`,
+                    )
+                  } catch (e) {
+                    setAiProof('AI re-decision failed: ' + String(e))
+                  }
+                }}
+              >
+                ⚡ Re-decide email_313 with AI
+              </Button>
+              <Button variant="outline" className="h-10 gap-1 px-3.5 shadow-sm" onClick={() => navigate('/lab')}>
+                Open Generalize Lab
+                <PlayIcon />
+              </Button>
+            </div>
+          </div>
+          {aiProof ? (
+            <div className="rounded-xl border bg-zinc-50 px-4 py-3 font-mono text-xs leading-relaxed dark:bg-muted">{aiProof}</div>
+          ) : null}
+        </section>
+      </Rise>
+
+      {scoreboard ? (
+        <Rise>
+          <section className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-lg font-medium">Validation — official scorer, full breakdown</h2>
+              <span className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                <span>macro F1 <b className="text-foreground">{f3(scoreboard.stage1?.macro_f1)}</b></span>
+                <span>defect F1 <b className="text-foreground">{f3(scoreboard.stage3?.defect_f1)}</b></span>
+                <span>E2E {scoreboard.end_to_end?.success ?? 0}/{scoreboard.end_to_end?.total ?? 0}</span>
+                <span>esc. precision <b className="text-foreground">{f2(scoreboard.reliability?.escalation_precision)}</b> · recall <b className="text-foreground">{f2(scoreboard.reliability?.escalation_recall)}</b></span>
+                <DashboardLink href="/SCORES.md" className="underline">SCORES.md</DashboardLink>
+                <DashboardLink href="/README.md" className="underline">README.md</DashboardLink>
+              </span>
+            </div>
+            <div className="grid gap-3 lg:grid-cols-3">
+              <div className="glass-card flex flex-col p-5">
+                <p className="text-sm font-medium tracking-tight">Score journey — 10 instrumented iterations</p>
+                <div className="mt-3 h-44">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={scoreboard.journey} margin={{ top: 8, right: 10, left: -22, bottom: 0 }}>
+                      <CartesianGrid stroke="var(--border)" strokeDasharray="3 6" vertical={false} />
+                      <XAxis dataKey="v" tick={tickStyle} tickLine={false} axisLine={false} />
+                      <YAxis domain={[0, 1.05]} tick={tickStyle} tickLine={false} axisLine={false} />
+                      <RTooltip contentStyle={tooltipStyle} formatter={(x) => [Number(x).toFixed(4), 'final score']} />
+                      <Line type="monotone" dataKey="score" stroke="var(--status-completed)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--status-completed)', strokeWidth: 0 }} animationDuration={1500} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{scoreboard.journey_note}</p>
+              </div>
+
+              <div className="glass-card flex flex-col p-5">
+                <p className="text-sm font-medium tracking-tight">Confusion matrix — classification</p>
+                <p className="text-xs text-muted-foreground">rows = actual · cols = predicted (zero off-diagonal)</p>
+                <div className="mt-3 overflow-x-auto">
+                  <table className="w-full border-collapse text-[11px]">
+                    <thead>
+                      <tr>
+                        <th className="p-1 text-left font-medium text-muted-foreground">actual ↓</th>
+                        {Object.keys(scoreboard.stage1.confusion).map((c) => (
+                          <th key={c} className="p-1 font-medium text-muted-foreground">{shortName[c] ?? c}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(scoreboard.stage1.confusion).map(([actual, preds]) => (
+                        <tr key={actual}>
+                          <td className="p-1 whitespace-nowrap font-medium text-muted-foreground">{shortName[actual] ?? actual}</td>
+                          {Object.keys(scoreboard.stage1.confusion).map((pred) => {
+                            const n = preds[pred] ?? 0
+                            const diag = pred === actual
+                            return (
+                              <td key={pred} className={cn('p-1 text-center font-mono', diag && 'rounded bg-(--status-completed)/15 font-bold text-(--status-completed)', !diag && n > 0 && 'bg-(--status-exception)/15 text-(--status-exception)')}>
+                                {n}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="glass-card flex flex-col p-5">
+                <p className="text-sm font-medium tracking-tight">Per-class precision / recall / F1</p>
+                <div className="mt-3 overflow-x-auto">
+                  <table className="w-full border-collapse text-xs">
+                    <thead>
+                      <tr className="text-muted-foreground">
+                        <th className="p-1.5 text-left font-medium">category</th>
+                        <th className="p-1.5 text-right font-medium">P</th>
+                        <th className="p-1.5 text-right font-medium">R</th>
+                        <th className="p-1.5 text-right font-medium">F1</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(scoreboard.stage1.per).map(([c, m]) => (
+                        <tr key={c} className="border-t border-dashed">
+                          <td className="p-1.5 font-mono text-[11px]">{c}</td>
+                          <td className="p-1.5 text-right font-mono">{f3(m.precision)}</td>
+                          <td className="p-1.5 text-right font-mono">{f3(m.recall)}</td>
+                          <td className="p-1.5 text-right font-mono font-bold">{f3(m.f1)}</td>
+                        </tr>
+                      ))}
+                      <tr className="border-t">
+                        <td className="p-1.5 font-medium">escalation (reliability)</td>
+                        <td className="p-1.5 text-right font-mono">{f3(scoreboard.reliability?.escalation_precision)}</td>
+                        <td className="p-1.5 text-right font-mono">{f3(scoreboard.reliability?.escalation_recall)}</td>
+                        <td className="p-1.5 text-right font-mono font-bold">{f3(scoreboard.reliability?.escalation_f1 ?? 1)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+        </Rise>
+      ) : null}
 
       <section className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
