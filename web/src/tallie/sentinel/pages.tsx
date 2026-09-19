@@ -145,6 +145,7 @@ const tickStyle = { fill: 'var(--muted-foreground)', fontSize: 11 } as const
 
 export function OverviewPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) => void }) {
   const { results, health, llmOn, rerun, selfCheck, loading, scoreboard, recheck } = useSentinel()
+  const { navigate } = useDashboardNavigation()
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const [aiProof, setAiProof] = useState<string | null>(null)
@@ -667,24 +668,20 @@ const filters: { value: Filter; label: string }[] = [
 ]
 
 export function InboxPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) => void }) {
-  const { results, searchQuery } = useSentinel()
+  const { results } = useSentinel()
   const [filter, setFilter] = useState<Filter>('all')
 
   const emails = results?.emails ?? []
   const filtered = useMemo(() => {
-    const q = (searchQuery ?? '').toLowerCase()
     return emails.filter((e) => {
       if (filter === 'LOWCONF') {
         if ((e.category_confidence ?? 0) >= 0.8) return false
       } else if (filter !== 'all' && !(e.status === filter || e.category === filter)) {
         return false
       }
-      if (!q) return true
-      return `${e.email_id} ${e.subject ?? ''} ${(e.defect_fields ?? []).join(' ')} ${e.review_reason ?? ''}`
-        .toLowerCase()
-        .includes(q)
+      return true
     })
-  }, [emails, filter, searchQuery])
+  }, [emails, filter])
 
   function handleExport() {
     const head = 'email_id,category,confidence,engine,status,findings,review_reason'
