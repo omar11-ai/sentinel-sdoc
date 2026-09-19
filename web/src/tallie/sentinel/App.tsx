@@ -7,6 +7,7 @@ import {
 } from '../components/tallie/navigation'
 import { ThemeProvider } from '../components/tallie/theme-provider'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { CinematicShell } from './cinematic/CinematicShell'
 import { SentinelProvider, useSentinel } from './context'
 import { SearchProvider } from './search'
 
@@ -58,15 +59,20 @@ function ErrorShell({ message }: { message: string }) {
 function DashboardRoute() {
   const { error } = useSentinel()
   return (
-    <DashboardLayout>
-      {error ? <ErrorShell message={error} /> : <DashboardPage />}
-    </DashboardLayout>
+    <div className="relative h-full">
+      <CinematicShell />
+      <div className="relative z-10 h-full">
+        <DashboardLayout>
+          {error ? <ErrorShell message={error} /> : <DashboardPage />}
+        </DashboardLayout>
+      </div>
+    </div>
   )
 }
 
 export default function SentinelApp() {
   return (
-    <ThemeProvider defaultTheme="light" storageKey="sentinel-theme">
+    <ThemeProvider defaultTheme="dark" storageKey="sentinel-theme">
       <TooltipProvider delayDuration={0}>
       <SentinelProvider>
         <SearchProvider>

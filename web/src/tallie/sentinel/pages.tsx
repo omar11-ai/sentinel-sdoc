@@ -38,6 +38,8 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useSentinel, type EmailRecord } from './context'
 import { EmailDetailsSheet } from './EmailSheet'
+import { CinematicHero, CinematicAbout } from './cinematic/Hero'
+import { FeatureCard } from './cinematic/FeatureCard'
 import { useDashboardNavigation } from '../components/tallie/navigation'
 import { cn } from '@/lib/utils'
 
@@ -108,6 +110,7 @@ function GrowBar({ w, color, delay = 0, h = 'h-3' }: { w: number; color: string;
 
 export function OverviewPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) => void }) {
   const { results, health, llmOn, rerun, selfCheck, loading } = useSentinel()
+  const { navigate } = useDashboardNavigation()
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
 
@@ -180,6 +183,9 @@ export function OverviewPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) =>
 
   return (
     <div className="flex flex-col gap-10 px-4 py-6 md:px-8 md:py-10">
+      <div className="hidden dark:block">
+        <CinematicHero onOpenInbox={() => navigate('/inbox')} />
+      </div>
       <PageHeader title="Document Verification Desk" sub="The full shipping inbox, inspected and adjudicated">
         <LiveBadge live={llmOn} />
         <Button className="h-10 gap-1 px-3.5" disabled={busy || loading} onClick={handleRerun}>
@@ -229,6 +235,10 @@ export function OverviewPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) =>
           </p>
         ) : null}
       </section>
+
+      <div className="hidden dark:block">
+        <CinematicAbout />
+      </div>
 
       <section className="grid gap-3 lg:grid-cols-2">
         <div className="flex flex-col gap-4 rounded-xl border bg-zinc-50/40 p-5 dark:bg-card/40">
@@ -564,16 +574,14 @@ export function PipelinePage() {
 
       <div className="flex max-w-3xl flex-col gap-6">
         {L.map((l, i) => (
-          <motion.div
+          <FeatureCard
             key={l.t}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: i * 0.06 }}
-            className="flex flex-col gap-3 rounded-xl border bg-zinc-50/40 p-5 dark:bg-card/40"
+            index={i}
+            className="flex flex-col gap-3 rounded-2xl border bg-zinc-50/40 p-5 dark:border-(--border) dark:bg-[#101010]"
           >
             <div className="flex flex-wrap items-center gap-3">
-              <span className="grid size-9 place-items-center rounded-full border-2 border-foreground bg-background text-sm font-semibold">
-                {l.n}
+              <span className="grid size-9 place-items-center rounded-lg bg-black/40 text-sm font-semibold text-(--cs-muted) dark:bg-black/40">
+                <span className="font-mono text-[10px] tabular-nums">{String(i + 1).padStart(2, '0')}</span>
               </span>
               <h2 className="text-lg font-medium">{l.t}</h2>
               <span className="inline-flex items-center gap-1.25 rounded-lg bg-(--live)/10 px-3 py-1 text-xs font-medium text-(--live)">{l.eng}</span>
@@ -586,7 +594,7 @@ export function PipelinePage() {
                 </span>
               ))}
             </div>
-          </motion.div>
+          </FeatureCard>
         ))}
       </div>
     </div>

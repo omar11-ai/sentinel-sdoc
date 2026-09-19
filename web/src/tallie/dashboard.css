@@ -177,3 +177,50 @@ body:has(.tallie-dashboard) [data-slot="dropdown-menu-content"] [data-slot="drop
   padding-left: 0.625rem;
   padding-right: 2rem;
 }
+
+/* ================================================================
+   HIRAE-L CINEMATIC DARK — token overrides (from MohammadShehadeh/hirael,
+   templates/creative-studio: blacks #070707/#0B0A09, cream #E1E0CC,
+   warm muted #DEDBC8, film-grain + drifting cinematic backdrop)
+   Appended last so it wins the cascade. Light theme untouched.
+   ================================================================ */
+.tallie-dashboard.dark,
+.dark .tallie-dashboard,
+.dark body:has(.tallie-dashboard) [data-slot='sidebar'][data-mobile='true'],
+.dark body:has(.tallie-dashboard) [data-slot='sheet-content'],
+.dark body:has(.tallie-dashboard) [data-slot='dropdown-menu-content'],
+.dark body:has(.tallie-dashboard) [data-slot='tooltip-content'] {
+  --background: #070707;
+  --card: #0b0a09;
+  --popover: #101010;
+  --foreground: #e1e0cc;
+  --card-foreground: #e1e0cc;
+  --popover-foreground: #e1e0cc;
+  --primary: #e1e0cc;
+  --primary-foreground: #0b0a09;
+  --secondary: #161513;
+  --secondary-foreground: #e1e0cc;
+  --muted: #161513;
+  --muted-foreground: #a39e8b;
+  --accent: #1a1916;
+  --accent-foreground: #e1e0cc;
+  --border: rgba(225, 224, 204, 0.1);
+  --input: rgba(225, 224, 204, 0.12);
+  --ring: #78766a;
+  --sidebar: #0b0a09;
+  --sidebar-foreground: #dedbc8;
+  --sidebar-accent: #161513;
+  --sidebar-accent-foreground: #e1e0cc;
+  --sidebar-border: rgba(225, 224, 204, 0.08);
+  --sidebar-primary: #e1e0cc;
+  --sidebar-primary-foreground: #0b0a09;
+  /* status palette, desaturated to sit in the cinematic frame */
+  --status-processing: #d8b24a;
+  --status-completed: #8fce9e;
+  --status-exception: #e8836f;
+  --live: #b8d96e;
+  --trend: #8fce9e;
+  --cs-cream: #e1e0cc;
+  --cs-muted: #a39e8b;
+  --cs-ink: #0b0a09;
+}
