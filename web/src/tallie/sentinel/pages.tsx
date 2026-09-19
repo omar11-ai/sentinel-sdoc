@@ -56,7 +56,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useSentinel, type EmailRecord } from './context'
 import { EmailDetailsSheet } from './EmailSheet'
 import { FeatureCard } from './cinematic/FeatureCard'
-import { useDashboardNavigation, DashboardLink } from '../components/tallie/navigation'
+import { useDashboardNavigation } from '../components/tallie/navigation'
 import { cn } from '@/lib/utils'
 
 /* ---------- shared bits ---------- */
@@ -544,9 +544,9 @@ export function OverviewPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) =>
                 <span>defect F1 <b className="text-foreground">{f3(scoreboard.stage3?.defect_f1)}</b></span>
                 <span>E2E {scoreboard.end_to_end?.success ?? 0}/{scoreboard.end_to_end?.total ?? 0}</span>
                 <span>esc. precision <b className="text-foreground">{f2(scoreboard.reliability?.escalation_precision)}</b> · recall <b className="text-foreground">{f2(scoreboard.reliability?.escalation_recall)}</b></span>
-                <DashboardLink href="/api/submission" download="submission.json" className="underline">submission.json ↓</DashboardLink>
-                <DashboardLink href="/SCORES.md" className="underline">SCORES.md</DashboardLink>
-                <DashboardLink href="/README.md" className="underline">README.md</DashboardLink>
+                <a href="/api/submission" download="submission.json" target="_blank" rel="noreferrer" className="underline transition hover:text-foreground">submission.json ↓</a>
+                <a href="/SCORES.md" target="_blank" rel="noreferrer" className="underline transition hover:text-foreground">SCORES.md</a>
+                <a href="/README.md" target="_blank" rel="noreferrer" className="underline transition hover:text-foreground">README.md</a>
               </span>
             </div>
             <div className="grid gap-3 lg:grid-cols-3">
