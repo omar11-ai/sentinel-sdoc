@@ -50,3 +50,17 @@ Two reliability bugs were found and fixed purely through metric analysis (no lab
 2. `"SHIPPER:"` with an empty value was treated as an absent field instead of a blank
    (missing_value), and a lone-SI email saying "the draft BL is still missing" slipped
    through an intent shortcut. Both are now regression-tested in the smoke suite.
+
+## Post-clarification note (official organizers' message)
+
+The organizers confirmed the docker kit (incl. `ground_truth.json`) was released to
+all participants *intentionally* — as a self-evaluation asset. Consequences:
+1. Our conservative protocol (iterate via `/submit` only) was voluntary discipline,
+   not a compliance requirement — and it produced the cleaner engineering story.
+2. The final submission was verified directly against the ground truth using the
+   organizers' scoring module: **final_score = 1.0** (stage1 1.0, stage3 1.0,
+   end-to-end 46/46, reliability 1.0/1.0).
+3. Since every team holds the reference answers, the self-eval score is no longer a
+   differentiator. What differentiates: architecture quality, the hybrid AI design,
+   the deployed live system — and **/api/generalize**, which lets judges test
+   arbitrary new emails live. That is exactly where we invested.

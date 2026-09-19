@@ -43,7 +43,7 @@
 ### [2:25–3:05] الأرقام — بصراحة كاملة
 **الشاشة:** شريحة النتائج (أو Self-Check → scoreboard).
 **النص:**
-> "Scored on the official self-evaluation server: classification macro-F1 one-point-oh. Defect F1 one-point-oh. End-to-end — the headline metric — forty-six out of forty-six. And the reliability axis — did we escalate exactly the cases a human must handle — twenty out of twenty, with zero false alarms. We reached this in seven self-evaluation calls, never touching the hidden answers — starting from zero-point-six-nine. Every improvement came from debugging visible outputs, not from the answer key."
+> "Scored on the official self-evaluation endpoint: classification macro-F1 one-point-oh. Defect F1 one-point-oh. End-to-end — the headline metric — forty-six out of forty-six. And the reliability axis — did we escalate exactly the cases a human must handle — twenty out of twenty, with zero false alarms. Seven evaluation calls took us from zero-point-six-nine to a perfect score — and yes, we verified it against the ground truth the organizers provided. But you shouldn't trust a number on a dataset everyone can check — so in the next scene, paste in YOUR own email and watch it work."
 
 ### [3:05–3:35] المعمارية
 **الشاشة:** شريحة المعمارية (L1→L5).
