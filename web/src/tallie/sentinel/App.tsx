@@ -6,6 +6,7 @@ import {
   useDashboardNavigation,
 } from '../components/tallie/navigation'
 import { ThemeProvider } from '../components/tallie/theme-provider'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { SentinelProvider, useSentinel } from './context'
 import { SearchProvider } from './search'
 
@@ -66,6 +67,7 @@ function DashboardRoute() {
 export default function SentinelApp() {
   return (
     <ThemeProvider defaultTheme="light" storageKey="sentinel-theme">
+      <TooltipProvider delayDuration={0}>
       <SentinelProvider>
         <SearchProvider>
           <DashboardNavigationProvider>
@@ -74,6 +76,7 @@ export default function SentinelApp() {
           </DashboardNavigationProvider>
         </SearchProvider>
       </SentinelProvider>
+      </TooltipProvider>
     </ThemeProvider>
   )
 }
