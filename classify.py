@@ -129,13 +129,15 @@ Classify the email into EXACTLY one category:
 Answer with JSON: {"category": "...", "confidence": 0.0-1.0, "reason": "short"}"""
 
 
-def classify_email(client: LLMClient, email: dict) -> dict:
+def classify_email(client: LLMClient, email: dict, use_llm: bool | None = None) -> dict:
+    """use_llm=None -> follow config.LLM_BATCH (bulk runs); True -> force (interactive)."""
     subject = str(email.get("subject", "") or "")
     body = str(email.get("body", "") or "")
     cat, conf = classify_rules(subject, body)
     out = {"category": cat, "confidence": conf, "engine": "rules", "reason": "keyword cues"}
 
-    if client.available():
+    eff = (client.available() and config.LLM_BATCH) if use_llm is None else (use_llm and client.available())
+    if eff:
         data = client.chat_json(CLASSIFY_SYSTEM,
                                 f"Subject: {subject}\n\nBody:\n{body[:2500]}",
                                 model=client.fast_model)

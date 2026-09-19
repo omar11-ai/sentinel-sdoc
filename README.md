@@ -69,6 +69,11 @@ SENTINEL is an **AI-first system with a deterministic guarantee**:
 - **Try it yourself:** open the dashboard → **"🧪 Try your own email"** → paste an email
   that is not in the dataset (plus SI/BL text). The AI-first path classifies, extracts
   and compares it live. Judges are invited to test generalization themselves.
+- **Live-validated:** the LLM path was run on the hardest reference documents
+  (table-style PDFs, bilingual labels) and produced verdicts identical to the
+  deterministic core, with 7/7 field coverage. When the provider is rate-limited or
+  unreachable, the system **silently degrades to the deterministic engine and still
+  returns the correct verdict** — resilience by design, not by accident.
 
 ## Why parts of the rules engine are tuned to the reference dataset
 

@@ -50,7 +50,7 @@ def run(inbox: Inbox | None = None, progress_cb=None) -> dict:
             si_path, bl_path = inbox.guess_si_bl(email)
             intent = no_docs_intent(body) if not attachments else "compare"
 
-            use_llm = client.available()
+            use_llm = client.available() and config.LLM_BATCH
             shaky = (cls["confidence"] < config.COURT_CONFIDENCE) or bool(cls.get("disagreement"))
 
             si_doc = extract_document(client, si_path, get_bytes, use_llm, shaky) if si_path else None
@@ -98,7 +98,8 @@ def run(inbox: Inbox | None = None, progress_cb=None) -> dict:
             if comparable:
                 # adversarial verifier on the BL doc (log-only in advisory)
                 verifier = None
-                if (config.FLAG_ADVERSARIAL and bl_doc and bl_doc["fields"]):
+                if (config.FLAG_ADVERSARIAL and config.LLM_BATCH
+                        and client.available() and bl_doc and bl_doc["fields"]):
                     attack = {f: bl_doc["fields"][f] for f in list(bl_doc["fields"])[:7]}
                     bl_bytes = get_bytes(bl_doc["path"]) or b""
                     verifier = verify_extraction(client, attack,

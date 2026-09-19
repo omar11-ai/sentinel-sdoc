@@ -2,6 +2,15 @@
 import os
 from pathlib import Path
 
+# load .env (gitignored) before reading env vars; real environment still wins
+_ENV_FILE = Path(__file__).resolve().parent / ".env"
+if _ENV_FILE.exists():
+    for _line in _ENV_FILE.read_text(encoding="utf-8").splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith("#") and "=" in _line:
+            _k, _v = _line.split("=", 1)
+            os.environ.setdefault(_k.strip(), _v.strip())
+
 ROOT = Path(__file__).resolve().parent
 
 # ---------------- Data source ----------------
@@ -12,10 +21,11 @@ SERVER_URL = os.getenv("SENTINEL_SERVER_URL", "").rstrip("/")
 # ---------------- LLM backend ----------------
 LLM_PROVIDER = os.getenv("SENTINEL_LLM_PROVIDER", "")  # "" = rules only
 LLM_API_KEY = os.getenv("SENTINEL_LLM_KEY", "")
-LLM_MODEL = os.getenv("SENTINEL_LLM_MODEL", "gpt-4o-mini")
-LLM_FAST_MODEL = os.getenv("SENTINEL_LLM_FAST_MODEL", LLM_MODEL)
+LLM_MODEL = os.getenv("SENTINEL_LLM_MODEL", "gemini-flash-latest")
+LLM_FAST_MODEL = os.getenv("SENTINEL_LLM_FAST_MODEL", "gemini-3.1-flash-lite")
 LLM_TEMPERATURE = float(os.getenv("SENTINEL_LLM_TEMP", "0"))
 LLM_CACHE = os.getenv("SENTINEL_LLM_CACHE", "1") == "1"
+LLM_BATCH = os.getenv("SENTINEL_LLM_BATCH", "1") == "1"  # LLM in full-batch runs (quota!)
 CACHE_DIR = ROOT / ".cache" / "llm"
 
 # ---------------- Feature flags ----------------

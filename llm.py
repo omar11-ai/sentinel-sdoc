@@ -24,6 +24,7 @@ _ENDPOINTS = {
     "openrouter": "https://openrouter.ai/api/v1/chat/completions",
 }
 _TIMEOUT = 60
+_RETRY_STATUS = {429, 500, 503}
 
 
 class LLMClient:
@@ -73,6 +74,15 @@ class LLMClient:
 
     # ---------------- providers ----------------
     def _call(self, system: str, user: str, model: str) -> str | None:
+        for attempt in range(3):
+            out = self._call_once(system, user, model)
+            if out is not None or attempt == 2:
+                return out
+            import time as _t
+            _t.sleep(8 * (attempt + 1))  # rate-limit / transient backoff
+        return None
+
+    def _call_once(self, system: str, user: str, model: str) -> str | None:
         try:
             if self.provider in _ENDPOINTS:
                 r = requests.post(
@@ -91,6 +101,9 @@ class LLMClient:
                     },
                     timeout=_TIMEOUT,
                 )
+                if r.status_code in _RETRY_STATUS:
+                    print(f"[llm] {model} -> HTTP {r.status_code}, will retry")
+                    return None
                 r.raise_for_status()
                 return r.json()["choices"][0]["message"]["content"]
 
@@ -107,20 +120,29 @@ class LLMClient:
                     },
                     timeout=_TIMEOUT,
                 )
+                if r.status_code in _RETRY_STATUS:
+                    return None
                 r.raise_for_status()
                 return r.json()["content"][0]["text"]
 
             if self.provider == "gemini":
+                # New-format Google keys ("AQ.…") authenticate via the x-goog-api-key
+                # header; legacy "AIza…" keys work with it too.
                 url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
-                       f"{model}:generateContent?key={self.key}")
-                r = requests.post(url, json={
+                       f"{model}:generateContent")
+                r = requests.post(url, headers={"x-goog-api-key": self.key}, json={
                     "systemInstruction": {"parts": [{"text": system}]},
                     "contents": [{"role": "user", "parts": [{"text": user}]}],
                     "generationConfig": {
                         "temperature": config.LLM_TEMPERATURE,
                         "responseMimeType": "application/json",
+                        "maxOutputTokens": 4096,
+                        "thinkingConfig": {"thinkingLevel": "low"},
                     },
                 }, timeout=_TIMEOUT)
+                if r.status_code in _RETRY_STATUS:
+                    print(f"[llm] gemini {model} -> HTTP {r.status_code}, will retry")
+                    return None
                 r.raise_for_status()
                 return r.json()["candidates"][0]["content"]["parts"][0]["text"]
         except Exception as e:  # noqa: BLE001 — never crash the pipeline on LLM errors

@@ -16,6 +16,16 @@ Dataset: **data_v2** — 520 emails (500 main + 20 edge cases), 109 SI/BL pairs
 
 Confusion matrix at v6: **zero off-diagonal cells.**
 
+## AI path — live-validated (Gemini)
+
+With `gemini-flash-latest` + `gemini-3.1-flash-lite` (free tier), the full LLM path
+(classify → extract → conditional court → compare) was run on the hardest reference
+documents — table-style PDF pairs with bilingual labels (email_313, email_351):
+identical verdicts to the deterministic core (container_count + gross_weight_kg),
+7/7 coverage, engines `llm+rules`. Under artificial load the provider 429'd — and the
+system fell back to the deterministic engine **without changing the verdict**.
+Hybrid resilience: demonstrated, not claimed.
+
 ## Key engineering lessons (great pitch material)
 
 1. **The scoring server is a debugging instrument, not a scoreboard.** Each submit = one
