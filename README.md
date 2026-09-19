@@ -1,5 +1,7 @@
 # SENTINEL — Shipping Document Verification
 
+**🔴 Live on the cloud: https://sentinel-sdoc.onrender.com** (deployed from this repo via Render Blueprint — `/api/health` for liveness)
+
 **SI ⇄ BL discrepancy intelligence for shipping operations inboxes.**
 SENTINEL triages a mixed inbox, reads Shipping Instructions and draft Bills of Lading,
 compares the seven canonical shipment fields, surfaces mismatches with side-by-side
@@ -59,16 +61,26 @@ python make_submission.py --data /path/to/data --out submission.json
 
 SENTINEL is an **AI-first system with a deterministic guarantee**:
 
-- **L1 triage / L2 extraction / L3 verification run on LLMs** (Gemini, GPT, DeepSeek,
-  Groq or any OpenAI-compatible provider — see `.env.example`) as soon as a key is
-  configured. The conditional "court" convenes multiple LLM passes for hard documents;
-  the adversarial verifier attacks extractions for counter-evidence.
-- **The deterministic engine is the measured fallback** (and the default when no key is
-  set): label-synonym normalization, typed comparison, canonical escalation. It lets us
-  prove correctness end-to-end and keeps the deployed service fast, free and reproducible.
-- **Try it yourself:** open the dashboard → **"🧪 Try your own email"** → paste an email
-  that is not in the dataset (plus SI/BL text). The AI-first path classifies, extracts
-  and compares it live. Judges are invited to test generalization themselves.
+| Layer | Engine | How AI is used |
+|---|---|---|
+| L1 · Triage | rules **+ LLM assist** | weighted cue scoring first; LLM classifies interactively and disagreements are recorded, never hidden |
+| L2 · Extract | rules **+ LLM court** | 7 canonical fields from txt/PDF/XLSX/DOCX; a multi-pass LLM "court" convenes only for low-confidence/contested documents |
+| L3 · Verify | **LLM adversarial** | an LLM attacker hunts counter-evidence inside the same document (advisory by default) |
+| 🛡 · Sanitize | pattern pre-screen | prompt-injection screening **before any LLM sees a document**; flags are surfaced, never obeyed |
+
+- **The deterministic engine is the measured fallback** (and the default for bulk runs,
+  via `SENTINEL_LLM_BATCH`): label-synonym normalization, typed comparison, canonical
+  escalation. It lets us prove correctness end-to-end (520/520) and keeps the deployed
+  service fast, free and reproducible. **Interactive requests are AI-first** — the LLM is
+  forced on, single-email.
+- **Prove the AI works, live — two ways:**
+  1. **Generalize Lab** in the dashboard → paste an email that is *not* in the dataset
+     (plus SI/BL text) and watch the AI path classify, extract and compare it.
+  2. **⚡ Re-decide with AI** — open *any* email in the Inbox and hit the button: the
+     full pipeline re-runs on that exact email with the LLM forced (`POST
+     /api/emails/{id}/recheck`). You see the engine flip (`rules → llm+rules`), the
+     court convening, and the verdict being confirmed — e.g. `email_313`:
+     `container_count 5≠4`, `gross_weight_kg 118270≠117770`, re-found by AI in ~60s.
 - **Live-validated:** the LLM path was run on the hardest reference documents
   (table-style PDFs, bilingual labels) and produced verdicts identical to the
   deterministic core, with 7/7 field coverage. When the provider is rate-limited or
@@ -152,8 +164,12 @@ export SENTINEL_SCORING_URL=http://localhost:8080
 
 ## Deployment
 
-Docker image included (`Dockerfile`, health check on `/api/health`).
-One-click on Render via `render.yaml`; works on Fly.io / HF Spaces as well.
+**Live: https://sentinel-sdoc.onrender.com** — deployed from this repo via the Render
+Blueprint (`render.yaml`): free web service, Docker runtime, health check on
+`/api/health`, autodeploy on every push to `main`. Environment: `SENTINEL_ADVERSARIAL_MODE=advisory`,
+`SENTINEL_USE_LLM=auto`, `SENTINEL_LLM_PROVIDER=gemini`, `SENTINEL_LLM_BATCH=0`
+(bulk deterministic; interactive AI-first). Docker image also included (`Dockerfile`);
+works on Fly.io / HF Spaces as well.
 
 ## Roadmap (beyond the hackathon)
 

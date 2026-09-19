@@ -70,6 +70,93 @@ async def email_detail(email_id: str):
     return JSONResponse({"error": "not found"}, status_code=404)
 
 
+@app.post("/api/emails/{email_id}/recheck")
+async def email_recheck(email_id: str):
+    """Judge-facing: re-decide a stored dataset email through the LIVE AI-first
+    path (LLM forced). The rules→llm engine flip becomes visible in real time."""
+    r = _ensure_results()
+    base = next((e for e in r.get("emails", []) if e["email_id"] == email_id), None)
+    if base is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    import time as _t
+    from classify import classify_email
+    from extract import extract_document
+    from compare import compare as _cmp
+    from escalate import judge as _judge, no_docs_intent
+    from sanitize import sanitize_text
+
+    inbox = Inbox()
+    email = next((e for e in inbox.emails() if inbox.get_id(e) == email_id), None)
+    if email is None:
+        return JSONResponse({"error": "email missing from dataset"}, status_code=404)
+
+    client = LLMClient()
+    get_bytes = inbox.read_bytes
+    t0 = _t.time()
+    cls = classify_email(client, email, True)  # interactive → AI forced
+    out = {
+        "mode": "interactive-ai",
+        "llm_available": client.available(),
+        "llm_provider": f"{config.LLM_PROVIDER}:{config.LLM_MODEL}" if client.available() else None,
+        "classification": cls,
+        "batch": {"category": base["category"], "status": base["status"],
+                  "classifier_engine": base["classifier_engine"],
+                  "engine_trace": base["engine_trace"]},
+    }
+    if cls["category"] != "BL_COMPARISON":
+        out.update({"status": config.STATUS_FOR_NON_BL, "route": cls["category"],
+                    "elapsed_s": round(_t.time() - t0, 1),
+                    "note": "not a document-comparison request — live classification only"})
+        return JSONResponse(out)
+
+    attachments = inbox.get_attachments(email)
+    si_path, bl_path = inbox.guess_si_bl(email)
+    intent = no_docs_intent(inbox.get_body(email)) if not attachments else "compare"
+    shaky = (cls["confidence"] < config.COURT_CONFIDENCE) or bool(cls.get("disagreement"))
+    si_doc = extract_document(client, si_path, get_bytes, True, shaky) if si_path else None
+    bl_doc = extract_document(client, bl_path, get_bytes, True, shaky) if bl_path else None
+    out["si"] = _pub(si_doc) if si_doc else None
+    out["bl"] = _pub(bl_doc) if bl_doc else None
+
+    flags: list[str] = []
+    if config.FLAG_SANITIZE:
+        for doc in (si_doc, bl_doc):
+            if not doc or doc["doc_status"] != "ok":
+                continue
+            raw = get_bytes(doc["path"])
+            text = (raw or b"").decode("utf-8", errors="replace")
+            _, f = sanitize_text(text)
+            flags.extend(f)
+    out["injection_flags"] = list(dict.fromkeys(flags))
+
+    if intent == "send_me" and not attachments:
+        out.update({"status": "OK", "elapsed_s": round(_t.time() - t0, 1),
+                    "note": "request to RECEIVE the BL — clean by design"})
+        return JSONResponse(out)
+
+    blanks = sorted(set((si_doc or {}).get("blank_fields", []) +
+                        (bl_doc or {}).get("blank_fields", [])))
+    common = 0
+    if si_doc and bl_doc:
+        sf, bf = si_doc["fields"], bl_doc["fields"]
+        common = sum(1 for f in config.FIELDS
+                     if f in sf and f in bf and not sf[f].get("blank") and not bf[f].get("blank"))
+    esc, canonical, details = _judge(si_doc, bl_doc, len(attachments), intent,
+                                     common, blanks, out["injection_flags"])
+    out["elapsed_s"] = round(_t.time() - t0, 1)
+    if esc:
+        out.update({"status": "NEEDS_REVIEW", "review_reason": canonical, "details": details})
+        return JSONResponse(out)
+    if si_doc and bl_doc:
+        cmp_res = _cmp(si_doc, bl_doc)
+        out.update({"status": "MISMATCH" if cmp_res["defects"] else "OK",
+                    "defects": cmp_res["defects"]})
+    else:
+        out.update({"status": "NEEDS_REVIEW", "review_reason": "missing_attachment",
+                    "details": ["no SI/BL pair resolvable for this email"]})
+    return JSONResponse(out)
+
+
 class Submission(BaseModel):
     data: dict
 

@@ -102,3 +102,15 @@ CONTAINER COUNT: 4 x 40HC
 GROSS WEIGHT: 18,500 KG
 ```
 > النتيجة المتوقعة: category=BL_COMPARISON، defect=container_count (3≠4)، injection_flags ظاهرة. مشهد واحد بيورّي الاتنين! 🎯
+
+---
+
+## 🎬 لقطة إضافية (اختياري — 20 ثانية): إثبات أن الـAI شغال فعلاً
+> مندهش تقول "فيه AI" بس — اورّيه:
+1. من **Inbox** افتح أي إيميل (مثال: `email_313`) → دوّس **⚡ Re-decide with AI — live**
+2. استنى ~60 ثانية (اللقطات السريعة تتحراش بال montage) → هيظهر:
+   - `classifier: rules → llm+rules` (المحرك اتقلب لايف)
+   - `BL extract: llm+rules(disagree)` — المحكمة اتجمعت
+   - العيوب اتلقطت تاني بالـAI: `container_count 5≠4` + `gross_weight_kg 118270≠117770`
+   - `✓ verdict confirmed — the live AI path agrees with the batch decision (MISMATCH)`
+3. وكمان في **Overview**: بانل Reliability (أسباب التصعيد + توزيع الثقة + تثبيت F1=1.0 بالسكورر الرسمي)
