@@ -129,10 +129,24 @@ export function EmailDetailsSheet({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { recheck, llmOn } = useSentinel()
+  const { recheck, llmOn, decide } = useSentinel()
   const [ai, setAi] = useState<RecheckResult | null>(null)
   const [aiBusy, setAiBusy] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
+  const [decNote, setDecNote] = useState('')
+  const [decBusy, setDecBusy] = useState(false)
+  const [decDone, setDecDone] = useState<string | null>(null)
+
+  async function handleDecide(d: 'approve_as_is' | 'flag_mismatch') {
+    if (!email) return
+    setDecBusy(true)
+    try {
+      await decide(email.email_id, d, decNote)
+      setDecDone(d)
+    } finally {
+      setDecBusy(false)
+    }
+  }
 
   async function handleRecheck() {
     if (!email) return
@@ -223,6 +237,34 @@ export function EmailDetailsSheet({
             </Note>
           ) : null}
           {email.review_reason ? <Note tone="warn">⚖ ESCALATED — {email.review_reason}</Note> : null}
+
+          {email.status === 'NEEDS_REVIEW' || email.review_reason ? (
+            <div className="flex flex-col gap-2 rounded-xl border p-4">
+              <p className="text-base font-medium tracking-tight">Human review — close the loop</p>
+              <p className="text-xs text-muted-foreground">
+                You are the reviewer. Decisions are tracked as a session overlay — the audited bulk run is never silently rewritten.
+              </p>
+              <input
+                value={decNote}
+                onChange={(e) => setDecNote(e.target.value)}
+                placeholder="Optional note for the audit trail…"
+                className="h-9 rounded-lg border bg-transparent px-3 text-sm outline-none focus:border-(--live)"
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" className="h-9" disabled={decBusy} onClick={() => void handleDecide('approve_as_is')}>
+                  ✓ Approve as-is
+                </Button>
+                <Button variant="outline" className="h-9" disabled={decBusy} onClick={() => void handleDecide('flag_mismatch')}>
+                  ⚠ Flag as mismatch
+                </Button>
+              </div>
+              {decDone ? (
+                <p className="text-sm font-medium text-(--status-completed)">
+                  ✓ decision recorded — {decDone === 'approve_as_is' ? 'approved as-is' : 'flagged as mismatch'} · queue status updated
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           {email.corpus_notes.map((n) => (
             <Note key={n} tone="info">🔎 {n} (corpus alias note — never a defect)</Note>
           ))}

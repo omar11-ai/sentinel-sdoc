@@ -54,6 +54,7 @@ export type EmailRecord = {
   corpus_notes: string[]
   verifier: { mode: string; objections: { evidence?: string; [k: string]: unknown }[]; enforcing_flip?: boolean } | null
   engine_trace: string[]
+  human_resolved?: boolean
 }
 
 export type Summary = {
@@ -73,7 +74,10 @@ export type Results = {
   emails: EmailRecord[]
   config: Record<string, unknown>
   [k: string]: unknown
+  ai_session?: { llm_calls: number; llm_elapsed_s: number }
+  human_decisions?: Record<string, HumanDecision>
 }
+
 
 export type RecheckResult = {
   mode: string
@@ -95,6 +99,13 @@ export type RecheckResult = {
 }
 
 export type GenResult = RecheckResult & { [k: string]: unknown }
+
+export type HumanDecision = {
+  decision: 'approve_as_is' | 'flag_mismatch'
+  note: string
+  at: string
+  was: { status?: string; review_reason?: string }
+}
 
 export type Scoreboard = {
   stage1: { accuracy: number; macro_f1: number; per: Record<string, { precision: number; recall: number; f1: number }>; confusion: Record<string, Record<string, number>> }
@@ -128,6 +139,8 @@ type SentinelState = {
   recheck: (id: string) => Promise<RecheckResult>
   generalize: (payload: Record<string, string>) => Promise<GenResult>
   scoreboard: Scoreboard | null
+  applyRecheck: (id: string, r: RecheckResult) => void
+  decide: (id: string, decision: 'approve_as_is' | 'flag_mismatch', note?: string) => Promise<void>
 }
 
 const SentinelContext = createContext<SentinelState | null>(null)
@@ -195,6 +208,52 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const applyRecheck = useCallback((id: string, r: RecheckResult) => {
+    setResults((rs) =>
+      rs
+        ? {
+            ...rs,
+            emails: rs.emails.map((e) =>
+              e.email_id === id ? { ...e, classifier_engine: 'llm+rules' } : e,
+            ),
+            ai_session: r.llm_available
+              ? {
+                  llm_calls: (rs.ai_session?.llm_calls ?? 0) + 1,
+                  llm_elapsed_s: Math.round(((rs.ai_session?.llm_elapsed_s ?? 0) + (r.elapsed_s ?? 0)) * 10) / 10,
+                }
+              : (rs.ai_session ?? { llm_calls: 0, llm_elapsed_s: 0 }),
+          }
+        : rs,
+    )
+  }, [])
+
+  const decide = useCallback(
+    async (id: string, decision: 'approve_as_is' | 'flag_mismatch', note?: string) => {
+      const j = await getJson<{ human_decisions: Record<string, HumanDecision> }>(
+        `/api/emails/${id}/decision`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ decision, note: note ?? '' }),
+        },
+      )
+      setResults((rs) =>
+        rs
+          ? {
+              ...rs,
+              human_decisions: { ...(rs.human_decisions ?? {}), ...(j.human_decisions ?? {}) },
+              emails: rs.emails.map((e) =>
+                e.email_id === id
+                  ? { ...e, status: decision === 'flag_mismatch' ? 'MISMATCH' : 'OK', human_resolved: true }
+                  : e,
+              ),
+            }
+          : rs,
+      )
+    },
+    [],
+  )
+
   const generalize = useCallback(
     (payload: Record<string, string>) =>
       getJson<GenResult>('/api/generalize', {
@@ -220,8 +279,10 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       selfCheck,
       recheck,
       generalize,
+      applyRecheck,
+      decide,
     }),
-    [health, llmOn, results, scoreboard, loading, error, load, rerun, selfCheck, recheck, generalize],
+    [health, llmOn, results, scoreboard, loading, error, load, rerun, selfCheck, recheck, generalize, applyRecheck, decide],
   )
 
   return <SentinelContext.Provider value={value}>{children}</SentinelContext.Provider>

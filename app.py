@@ -24,7 +24,22 @@ _static_app = Path(__file__).resolve().parent / "static" / "app"
 if (_static_app / "assets").exists():
     app.mount("/assets", StaticFiles(directory=_static_app / "assets"), name="assets")
 
-_STATE: dict = {"results": None}
+_STATE: dict = {
+    "results": None,
+    "ai_session": {"llm_calls": 0, "llm_elapsed_s": 0.0},
+    "human_decisions": {},
+}
+
+
+def _ai_bump(client, elapsed) -> None:
+    """Record one live LLM decision (session-level telemetry, honest numbers)."""
+    try:
+        if callable(getattr(client, "available", None)) and client.available():
+            st = _STATE.setdefault("ai_session", {"llm_calls": 0, "llm_elapsed_s": 0.0})
+            st["llm_calls"] = int(st.get("llm_calls", 0)) + 1
+            st["llm_elapsed_s"] = round(float(st.get("llm_elapsed_s", 0.0)) + float(elapsed or 0), 1)
+    except Exception:
+        pass
 
 
 def _ensure_results() -> dict:
@@ -56,6 +71,8 @@ async def health():
 async def results():
     r = _ensure_results()
     public = {k: v for k, v in r.items() if k != "submission"}
+    public["ai_session"] = _STATE.get("ai_session", {"llm_calls": 0, "llm_elapsed_s": 0.0})
+    public["human_decisions"] = _STATE.get("human_decisions", {})
     return JSONResponse(public)
 
 
@@ -140,6 +157,10 @@ async def email_recheck(email_id: str):
         return JSONResponse({"error": "email missing from dataset"}, status_code=404)
 
     client = LLMClient()
+
+    def _fin(o: dict):
+        _ai_bump(client, o.get("elapsed_s"))
+        return JSONResponse(o)
     get_bytes = inbox.read_bytes
     t0 = _t.time()
     cls = classify_email(client, email, True)  # interactive → AI forced
@@ -156,7 +177,7 @@ async def email_recheck(email_id: str):
         out.update({"status": config.STATUS_FOR_NON_BL, "route": cls["category"],
                     "elapsed_s": round(_t.time() - t0, 1),
                     "note": "not a document-comparison request — live classification only"})
-        return JSONResponse(out)
+        return _fin(out)
 
     attachments = inbox.get_attachments(email)
     si_path, bl_path = inbox.guess_si_bl(email)
@@ -181,7 +202,7 @@ async def email_recheck(email_id: str):
     if intent == "send_me" and not attachments:
         out.update({"status": "OK", "elapsed_s": round(_t.time() - t0, 1),
                     "note": "request to RECEIVE the BL — clean by design"})
-        return JSONResponse(out)
+        return _fin(out)
 
     blanks = sorted(set((si_doc or {}).get("blank_fields", []) +
                         (bl_doc or {}).get("blank_fields", [])))
@@ -195,7 +216,7 @@ async def email_recheck(email_id: str):
     out["elapsed_s"] = round(_t.time() - t0, 1)
     if esc:
         out.update({"status": "NEEDS_REVIEW", "review_reason": canonical, "details": details})
-        return JSONResponse(out)
+        return _fin(out)
     if si_doc and bl_doc:
         cmp_res = _cmp(si_doc, bl_doc)
         out.update({"status": "MISMATCH" if cmp_res["defects"] else "OK",
@@ -203,7 +224,35 @@ async def email_recheck(email_id: str):
     else:
         out.update({"status": "NEEDS_REVIEW", "review_reason": "missing_attachment",
                     "details": ["no SI/BL pair resolvable for this email"]})
-    return JSONResponse(out)
+    return _fin(out)
+
+
+class Decision(BaseModel):
+    decision: str  # approve_as_is | flag_mismatch
+    note: str = ""
+
+
+@app.post("/api/emails/{email_id}/decision")
+async def email_decision(email_id: str, d: Decision):
+    """Human-in-the-loop: the reviewer closes an escalation. Stored as a
+    session-level overlay so the audited bulk run / submission stays intact."""
+    r = _ensure_results()
+    base = next((e for e in r.get("emails", []) if e["email_id"] == email_id), None)
+    if base is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    if d.decision not in ("approve_as_is", "flag_mismatch"):
+        return JSONResponse({"error": "decision must be approve_as_is or flag_mismatch"}, status_code=400)
+    from datetime import datetime, timezone
+    dec = {
+        "decision": d.decision,
+        "note": d.note,
+        "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "was": {"status": base.get("status"), "review_reason": base.get("review_reason")},
+    }
+    _STATE.setdefault("human_decisions", {})[email_id] = dec
+    return JSONResponse({"email_id": email_id, **dec,
+                         "human_decisions": _STATE["human_decisions"],
+                         "ai_session": _STATE.get("ai_session")})
 
 
 class Submission(BaseModel):
@@ -280,6 +329,10 @@ async def generalize(req: GeneralizeReq):
         return _get
 
     client = LLMClient()
+
+    def _fin(o: dict):
+        _ai_bump(client, o.get("elapsed_s"))
+        return JSONResponse(o)
     email = {"email_id": "pasted", "subject": req.subject, "body": req.body, "attachments": []}
     cls = classify_email(client, email)
 
@@ -304,7 +357,7 @@ async def generalize(req: GeneralizeReq):
     if cls["category"] != "BL_COMPARISON":
         result.update({"route": cls["category"], "status": "OK",
                        "note": "not a document-comparison request — classification only"})
-        return JSONResponse(result)
+        return _fin(result)
 
     common = 0
     blanks: list[str] = []
@@ -318,7 +371,7 @@ async def generalize(req: GeneralizeReq):
         if esc:
             result.update({"status": "NEEDS_REVIEW", "review_reason": canonical,
                            "details": details, "si": _pub(si_doc), "bl": _pub(bl_doc)})
-            return JSONResponse(result)
+            return _fin(result)
         cmp_res = _cmp(si_doc, bl_doc)
         result.update({
             "status": "MISMATCH" if cmp_res["defects"] else "OK",
@@ -328,7 +381,7 @@ async def generalize(req: GeneralizeReq):
     else:
         result.update({"status": "NEEDS_REVIEW", "review_reason": "missing_attachment",
                        "details": ["paste both SI and BL text to compare"]})
-    return JSONResponse(result)
+    return _fin(result)
 
 
 def _pub(doc):
