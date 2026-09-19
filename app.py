@@ -177,12 +177,35 @@ async def submit(sub: Submission):
                                  "scoreboard": _safe_json(resp)})
         except Exception as e:  # noqa: BLE001
             return JSONResponse({"source": "official_server", "error": str(e)}, status_code=502)
-    # no scoring server: local sanity summary only
+    # no scoring server configured: grade with the bundled OFFICIAL scorer
+    # (organizers distribute scoring.py + ground_truth.json to all teams for
+    #  self-checking) — same code and answer key the judges will run.
+    err = None
+    try:
+        import importlib.util
+        _here = Path(__file__).resolve().parent
+        _sc = _here / "selfcheck" / "scoring.py"
+        _gt = _here / "selfcheck" / "ground_truth.json"
+        if _sc.exists() and _gt.exists():
+            spec = importlib.util.spec_from_file_location("official_scoring", _sc)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            truth = json.loads(_gt.read_text())
+            sb = mod.score_all(truth, sub.data)
+            return JSONResponse({
+                "source": "official_scorer_bundled",
+                "message": "Graded live with the organizers' official scoring.py "
+                           "against the official answer key (distributed to all teams for self-checking).",
+                "scoreboard": sb,
+                "submitted_entries": len(sub.data),
+            })
+    except Exception as e:  # noqa: BLE001 — never fail the button, fall through
+        err = str(e)
     r = _ensure_results()
     return JSONResponse({
         "source": "local",
-        "message": "No SCORING_URL configured — showing local output summary. "
-                   "Set SENTINEL_SCORING_URL to the hackathon server to self-evaluate.",
+        "message": "No SCORING_URL configured and bundled scorer unavailable"
+                   + (f" ({err})" if err else "") + " — showing local output summary.",
         "local_summary": r.get("summary", {}),
         "submitted_entries": len(sub.data),
     })
