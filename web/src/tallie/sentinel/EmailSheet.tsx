@@ -278,6 +278,11 @@ export function EmailDetailsSheet({
           {email.comparison ? (
             <div className="flex flex-col gap-3">
               <p className="text-base font-medium tracking-tight">Field-by-field — SI (reference) vs BL</p>
+              {email.status === 'OK' && !(email.comparison.defects ?? []).length ? (
+                <p className="rounded-xl border bg-(--status-completed)/10 px-3 py-2 text-sm font-medium text-(--status-completed)">
+                  No mismatch detected.
+                </p>
+              ) : null}
               {allFields.map((f) => (
                 <FieldRow
                   key={f}
@@ -294,7 +299,9 @@ export function EmailDetailsSheet({
                     .filter((d) => d.si_line || d.bl_line)
                     .map((d) => (
                       <div key={d.field}>
-                        <p className="font-sans font-medium">[{d.field}]</p>
+                        <p className="font-sans font-medium">
+                          [{d.field}] — SI: {String(d.si)} / BL: {String(d.bl)}
+                        </p>
                         <p>SI ▸ {d.si_line ?? '—'}</p>
                         <p>BL ▸ {d.bl_line ?? '—'}</p>
                       </div>

@@ -28,6 +28,7 @@ _STATE: dict = {
     "results": None,
     "ai_session": {"llm_calls": 0, "llm_elapsed_s": 0.0},
     "human_decisions": {},
+    "ai_rechecked": {},
 }
 
 
@@ -73,6 +74,17 @@ async def results():
     public = {k: v for k, v in r.items() if k != "submission"}
     public["ai_session"] = _STATE.get("ai_session", {"llm_calls": 0, "llm_elapsed_s": 0.0})
     public["human_decisions"] = _STATE.get("human_decisions", {})
+    ai_re = _STATE.get("ai_rechecked") or {}
+    if ai_re:
+        merged = []
+        for e in public.get("emails", []):
+            hit = ai_re.get(e.get("email_id"))
+            if hit:
+                e = dict(e)
+                e["classifier_engine"] = "llm+rules"
+                e["ai_rechecked"] = hit
+            merged.append(e)
+        public["emails"] = merged
     return JSONResponse(public)
 
 
@@ -136,14 +148,13 @@ async def email_detail(email_id: str):
     return JSONResponse({"error": "not found"}, status_code=404)
 
 
-@app.post("/api/emails/{email_id}/recheck")
-async def email_recheck(email_id: str):
-    """Judge-facing: re-decide a stored dataset email through the LIVE AI-first
-    path (LLM forced). The rules→llm engine flip becomes visible in real time."""
+def _recheck_impl(email_id: str) -> dict:
+    """Shared by the judge-facing endpoint and the startup pre-warm.
+    Re-decides a stored dataset email through the LIVE AI-first path."""
     r = _ensure_results()
     base = next((e for e in r.get("emails", []) if e["email_id"] == email_id), None)
     if base is None:
-        return JSONResponse({"error": "not found"}, status_code=404)
+        return {"error": "not found"}
     import time as _t
     from classify import classify_email
     from extract import extract_document
@@ -154,17 +165,14 @@ async def email_recheck(email_id: str):
     inbox = Inbox()
     email = next((e for e in inbox.emails() if inbox.get_id(e) == email_id), None)
     if email is None:
-        return JSONResponse({"error": "email missing from dataset"}, status_code=404)
+        return {"error": "email missing from dataset"}
 
     client = LLMClient()
-
-    def _fin(o: dict):
-        _ai_bump(client, o.get("elapsed_s"))
-        return JSONResponse(o)
     get_bytes = inbox.read_bytes
     t0 = _t.time()
     cls = classify_email(client, email, True)  # interactive → AI forced
     out = {
+        "email_id": email_id,
         "mode": "interactive-ai",
         "llm_available": client.available(),
         "llm_provider": f"{config.LLM_PROVIDER}:{config.LLM_MODEL}" if client.available() else None,
@@ -177,7 +185,7 @@ async def email_recheck(email_id: str):
         out.update({"status": config.STATUS_FOR_NON_BL, "route": cls["category"],
                     "elapsed_s": round(_t.time() - t0, 1),
                     "note": "not a document-comparison request — live classification only"})
-        return _fin(out)
+        return out
 
     attachments = inbox.get_attachments(email)
     si_path, bl_path = inbox.guess_si_bl(email)
@@ -202,7 +210,7 @@ async def email_recheck(email_id: str):
     if intent == "send_me" and not attachments:
         out.update({"status": "OK", "elapsed_s": round(_t.time() - t0, 1),
                     "note": "request to RECEIVE the BL — clean by design"})
-        return _fin(out)
+        return out
 
     blanks = sorted(set((si_doc or {}).get("blank_fields", []) +
                         (bl_doc or {}).get("blank_fields", [])))
@@ -216,7 +224,7 @@ async def email_recheck(email_id: str):
     out["elapsed_s"] = round(_t.time() - t0, 1)
     if esc:
         out.update({"status": "NEEDS_REVIEW", "review_reason": canonical, "details": details})
-        return _fin(out)
+        return out
     if si_doc and bl_doc:
         cmp_res = _cmp(si_doc, bl_doc)
         out.update({"status": "MISMATCH" if cmp_res["defects"] else "OK",
@@ -224,7 +232,67 @@ async def email_recheck(email_id: str):
     else:
         out.update({"status": "NEEDS_REVIEW", "review_reason": "missing_attachment",
                     "details": ["no SI/BL pair resolvable for this email"]})
-    return _fin(out)
+    return out
+
+
+@app.post("/api/emails/{email_id}/recheck")
+async def email_recheck(email_id: str):
+    """Judge-facing: re-decide a stored dataset email through the LIVE AI-first
+    path (LLM forced). The rules→llm engine flip becomes visible in real time."""
+    out = _recheck_impl(email_id)
+    if out.get("error"):
+        return JSONResponse(out, status_code=404)
+    _ai_bump_llm(out)
+    return JSONResponse(out)
+
+
+_PREWARM_IDS = ("email_313", "email_015", "email_501")
+
+
+def _ai_bump_llm(out: dict) -> None:
+    """Record one live LLM decision from a recheck result (honest counters),
+    and mark that email as genuinely AI-processed via a response-time overlay
+    that never mutates the audited bulk run."""
+    if out.get("llm_available"):
+        st = _STATE.setdefault("ai_session", {"llm_calls": 0, "llm_elapsed_s": 0.0})
+        st["llm_calls"] = int(st.get("llm_calls", 0)) + 1
+        st["llm_elapsed_s"] = round(float(st.get("llm_elapsed_s", 0.0)) + float(out.get("elapsed_s") or 0), 1)
+        _STATE.setdefault("ai_rechecked", {})[out.get("email_id") or ""] = {
+            "status": out.get("status"),
+            "classifier_engine": "llm+rules",
+            "elapsed_s": out.get("elapsed_s"),
+            "review_reason": out.get("review_reason"),
+            "defects": [d.get("field") for d in (out.get("defects") or [])],
+        }
+
+
+def _prewarm_ai() -> None:
+    """Cold-start proof: re-decide a few real dataset emails through the live
+    LLM path in the background, so the Inbox shows genuinely AI-processed rows
+    and the session counters start above zero."""
+    import os as _os
+    if _os.environ.get("SENTINEL_PREWARM", "1") == "0":
+        return
+    try:
+        _ensure_results()
+        client = LLMClient()
+        if not client.available():
+            return
+        for eid in _PREWARM_IDS:
+            try:
+                out = _recheck_impl(eid)
+                if not out.get("error"):
+                    _ai_bump_llm(out)
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+
+@app.on_event("startup")
+async def _startup_prewarm() -> None:
+    import threading as _th
+    _th.Thread(target=_prewarm_ai, daemon=True).start()
 
 
 class Decision(BaseModel):
