@@ -54,6 +54,13 @@ async def results():
     return JSONResponse(public)
 
 
+@app.get("/api/submission")
+async def submission():
+    """The system's own submission document (what /submit would send)."""
+    r = _ensure_results()
+    return JSONResponse({"submission": r.get("submission", {})})
+
+
 @app.get("/api/emails/{email_id}")
 async def email_detail(email_id: str):
     r = _ensure_results()

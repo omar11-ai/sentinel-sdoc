@@ -483,9 +483,10 @@ function renderPipeline(){
 /* ---------- actions ---------- */
 async function runPipeline(){toast("re-running pipeline…");await fetch("/api/run",{method:"POST"});await load();toast("pipeline re-run complete")}
 async function selfCheck(){
- if(!DATA?.submission)return toast("no submission yet");
- const r=await fetch("/api/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({data:DATA.submission})});
- const j=await r.json();
+ const r=await fetch("/api/submission"); if(!r.ok)return toast("no submission yet");
+ const {submission}=await r.json(); if(!submission||!Object.keys(submission).length)return toast("no submission yet");
+ const res=await fetch("/api/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({data:submission})});
+ const j=await res.json();
  toast(j.scoreboard?("official score: "+(j.scoreboard.final_score??"?").toString().slice(0,6)):"self-check sent — "+(j.source||""));
  if(j.scoreboard) setTimeout(()=>alert("Official scoreboard:\n\n"+JSON.stringify({final_score:j.scoreboard.final_score,
   stage1:j.scoreboard.stage1?.macro_f1,stage3:j.scoreboard.stage3?.defect_f1,
