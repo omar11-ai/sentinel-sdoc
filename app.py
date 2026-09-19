@@ -8,6 +8,7 @@ from pathlib import Path
 import requests
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -18,6 +19,10 @@ from pipeline import run           # noqa: E402
 from llm import LLMClient          # noqa: E402
 
 app = FastAPI(title="SENTINEL — Shipping Document Verification", version="1.0.0")
+
+_static_app = Path(__file__).resolve().parent / "static" / "app"
+if (_static_app / "assets").exists():
+    app.mount("/assets", StaticFiles(directory=_static_app / "assets"), name="assets")
 
 _STATE: dict = {"results": None}
 
@@ -272,6 +277,11 @@ async def rerun():
 
 @app.get("/")
 async def dashboard():
+    return FileResponse(Path(__file__).resolve().parent / "static" / "app" / "index.html")
+
+
+@app.get("/legacy")
+async def dashboard_legacy():
     return FileResponse(Path(__file__).resolve().parent / "static" / "index.html")
 
 
