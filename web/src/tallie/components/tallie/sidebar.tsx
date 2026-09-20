@@ -112,7 +112,7 @@ function HelpItem() {
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <a
-                href="https://tallie.com/support"
+                href="https://github.com/omar11-ai/sentinel-sdoc"
                 target="_blank"
                 rel="noreferrer"
               >
