@@ -17,6 +17,11 @@ Method first, then results, then what we could not measure and why.
 
 ## Results
 
+A full field-level verification against the released answer key (permitted for self-check by
+the organizers' 19 Sep 2026 clarification) is published in
+[GROUND-TRUTH-VERIFICATION.md](GROUND-TRUTH-VERIFICATION.md): 520/520 categories, 520/520
+statuses, 46/46 exact defect sets, and 1.0 precision/recall/F1 on **all seven fields**.
+
 Submission `scoreboard_v10` — the shipped configuration (hybrid: rules core +
 LLM for ambiguous classification and shaky extraction), verified through the
 official scorer:

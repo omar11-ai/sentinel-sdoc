@@ -182,7 +182,11 @@
     <tr><td>Deterministic core only (batch LLM off)</td><td class="ok">1.0</td><td>the safety net is load-bearing — 1.5 s per full run</td></tr>
     <tr><td>Production hybrid (LLM at classification + extraction boundary)</td><td class="ok">1.0</td><td>same ceiling, plus generalisation: novel labels, ambiguous subjects, live re-decision</td></tr>
   </table>
-  <p style="font-size:14.5px;color:#3d3a33;margin-top:14px">
+  <p style="font-size:13.5px;color:var(--mut);margin-top:10px">
+    Verified field-level against the released answer key (sanctioned for self-check by the organizers): 520/520 categories · 520/520 statuses ·
+    46/46 exact defect sets · <b>1.0 precision / recall / F1 on every one of the seven fields</b> — zero false alarms, zero missed defects.
+  </p>
+  <p style="font-size:14.5px;color:#3d3a33;margin-top:8px">
     On this corpus the tuned deterministic core reaches the scorer's ceiling on its own. The AI layer is what the corpus
     <i>didn't</i> pre-teach: it classifies the subjects keyword cues collide on, aligns labels with no lexical route, and lets a
     reviewer re-decide any email live. The ablation is the deployment truth: degraded mode still verifies; the AI is the
