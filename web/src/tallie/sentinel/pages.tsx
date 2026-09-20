@@ -1373,6 +1373,10 @@ export function ArchitecturePage() {
     ['GET /api/audit', 'append-only audit chain — every reviewer action, before → after'],
     ['GET /api/selfwarm', 'one-URL keep-warm ping (no-store)'],
   ]
+  const storeNote =
+    'Reviewer overlay: SQLite, append-only (reviews + audit_events). On Render free tier the store is session-scoped — the production path is managed Postgres behind the same review_store interface (ARCHITECTURE.md). Corrections recompute the verdict; they never overwrite it.'
+  const aiNote =
+    'Measured honestly: 19 of 520 emails carry colliding keyword evidence across two categories and 49 of 520 sit below the 0.6-confidence gate — exactly the band where the shipped configuration engages the LLM instead of guessing. Rules decide the clear cases; AI arbitrates the colliding ones and extends the system to paperwork this corpus never taught.'
   return (
     <div className="flex flex-col gap-8 px-4 py-6 md:px-8 md:py-10">
       <PageHeader title="Architecture" sub="Five layers, one guarantee — and a documented public API" />
@@ -1395,6 +1399,8 @@ export function ArchitecturePage() {
             <span className="text-right text-xs text-muted-foreground">{v}</span>
           </div>
         ))}
+        <p className="rounded-xl border bg-zinc-50 px-4 py-3 text-xs leading-relaxed text-muted-foreground dark:bg-muted">{storeNote}</p>
+        <p className="rounded-xl border bg-zinc-50 px-4 py-3 text-xs leading-relaxed text-muted-foreground dark:bg-muted">{aiNote}</p>
         <p className="pt-2 text-xs leading-relaxed text-muted-foreground">
           Loader note — SENTINEL subclasses the organizers&apos; official participant <code>loader.py</code> (kept unmodified as{' '}
           <code>official_loader.py</code>): <code>Inbox(src).emails() · read_text() · submit()</code> work verbatim. GitHub:{' '}

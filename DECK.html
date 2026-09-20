@@ -145,9 +145,11 @@
       <p style="font-size:13px;color:#a39e8b;margin-top:12px">Every stage degrades loudly: engine traces ride on every verdict and are visible in the UI.</p>
       <p style="font-size:13px;color:#c9c5b4;margin-top:10px;border-left:2px solid #00b153;padding-left:10px">
         Measured honestly: on this corpus the deterministic core alone reaches the official ceiling (E7 ablation, runs.csv).
-        The AI engages exactly where language has no lexical route — a misleading subject, a label the dictionary never saw —
-        and it powers the live re-decision desk and the Generalize Lab. Rules decide the clear cases; AI extends the system
-        to paperwork this corpus never taught it.</p>
+        <b>19 of 520 emails carry colliding keyword evidence across two categories</b> (a comparison request naturally mentions the SI)
+        and <b>49 of 520 fall below the 0.6-confidence gate</b> — exactly the band where the shipped configuration engages the LLM
+        instead of guessing. The label dictionary covers 100% of the seven scored fields and deliberately ignores 47 occurrences of
+        five non-scored label kinds (Booking ref, B/L no, Invoice No, Amount, Terms) — restraint is precision. Rules decide the
+        clear cases; AI arbitrates the colliding ones and extends the system to paperwork this corpus never taught.</p>
     </div>
   </div>
   <div class="foot" style="color:#8a8574">SENTINEL · Architecture</div><div class="num" style="color:#8a8574">4</div>
@@ -186,6 +188,13 @@
     <tr><th>E7 ablation (full 520-email runs, one variable at a time)</th><th>Final</th><th>Reading</th></tr>
     <tr><td>Deterministic core only (batch LLM off)</td><td class="ok">1.0</td><td>the safety net is load-bearing — 1.5 s per full run</td></tr>
     <tr><td>Production hybrid (LLM at classification + extraction boundary)</td><td class="ok">1.0</td><td>same ceiling, plus generalisation: novel labels, ambiguous subjects, live re-decision</td></tr>
+  </table>
+  <table style="margin-top:14px">
+    <tr><th>Measured operations (production, this week)</th><th>Value</th></tr>
+    <tr><td>Deterministic batch — 520 emails, classified + extracted + compared</td><td><b>1.15 s</b> wall clock</td></tr>
+    <tr><td>API latency (live probes): results · submission · scoreboard · audit</td><td><b>71–116 ms</b></td></tr>
+    <tr><td>Human review rate</td><td>20 escalations / 520 (3.8%) — all four reasons 5/5</td></tr>
+    <tr><td>Interactive LLM re-decision, degraded quota mode</td><td>clean inline failure in 42.6 s — batch verdict preserved</td></tr>
   </table>
   <p style="font-size:13.5px;color:var(--mut);margin-top:10px">
     Verified field-level against the released answer key (sanctioned for self-check by the organizers): 520/520 categories · 520/520 statuses ·
@@ -227,7 +236,7 @@
     </div>
     <div class="col">
       <div class="card"><h3>Free-quota discipline</h3><p>Batch LLM usage is env-gated, content-hash cached and retried on 429/5xx; the deterministic core carries the batch so a quota wall degrades capability, not correctness.</p></div>
-      <div class="card"><h3>Truth as a pipeline</h3><p>The deployment scores itself through the official scorer on every run, so the published scoreboard can never drift from the code — the same scorer the organizers will run.</p></div>
+      <div class="card"><h3>Loud failure is a design feature</h3><p>Two audited proofs: with the PDF reader library removed, the system degrades to <b>unreadable escalations (510/520) — never a silent wrong verdict</b>; and email_501 is labelled <i>unreadable — BL slot actually contains a commercial invoice</i> where the key says wrong_doc_type — we publish the label nuance instead of rounding it away.</p></div>
     </div>
   </div>
   <div class="foot">SENTINEL · Challenges II</div><div class="num">8</div>
@@ -244,7 +253,7 @@
     </div>
     <div class="col">
       <div class="card"><h3>Generalisation</h3><p>OCR lane behind the existing reader interface for image-only paperwork · carrier-specific alias packs learned continuously from reviewer corrections · the comparison rule explorer surfaced to supervisors.</p></div>
-      <div class="card"><h3>Interoperability</h3><p>DCSA eBL 3.0-flavoured export as a serializer · webhook events for downstream systems · the seven-field contract generalised to additional document types.</p></div>
+      <div class="card"><h3>Interoperability</h3><p>Standards-aligned export targeting DCSA eBL 3.0 — serializer first, with conformance verified before any compliance claim · webhook events for downstream systems · the seven-field contract generalised to additional document types.</p></div>
     </div>
   </div>
   <p style="font-size:14px;color:var(--mut);margin-top:10px">The AI boundary does not move: deterministic where one input must have one answer; AI where language is genuinely ambiguous.</p>
