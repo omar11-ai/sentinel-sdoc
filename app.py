@@ -205,6 +205,17 @@ async def scores_md():
     return FileResponse(Path(__file__).resolve().parent / "SCORES.md", media_type="text/markdown")
 
 
+@app.get("/docs/{fname}")
+async def docs_asset(fname: str):
+    """README screenshots from the repo docs/ folder (/docs itself stays the Swagger UI)."""
+    if "/" in fname or "\\" in fname or ".." in fname or not fname.endswith(".png"):
+        return JSONResponse({"error": "not found"}, status_code=404)
+    p = Path(__file__).resolve().parent / "docs" / fname
+    if not p.is_file():
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return FileResponse(p, media_type="image/png")
+
+
 @app.get("/api/submission")
 async def submission():
     """The system's own submission document (what /submit would send).
