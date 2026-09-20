@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SENTINEL — Shipping Document Verification</title>
+<style>
+  :root{
+    --ink:#0b0a09; --paper:#faf9f6; --cream:#e1e0cc; --mut:#6f6b5e;
+    --live:#00b153; --bad:#dc2627; --amber:#d8b24a; --line:rgba(11,10,9,.12);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#23211d;font-family:Arial,'Segoe UI',sans-serif;color:var(--ink)}
+  .slide{width:1280px;height:720px;background:var(--paper);margin:24px auto;padding:64px 72px;
+         position:relative;overflow:hidden;page-break-after:always}
+  .slide .num{position:absolute;bottom:28px;right:40px;font-size:12px;color:var(--mut)}
+  .slide .foot{position:absolute;bottom:28px;left:72px;font-size:12px;color:var(--mut);letter-spacing:.08em}
+  h1{font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:64px;letter-spacing:-.01em}
+  h2{font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:40px;margin-bottom:8px}
+  .kicker{font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:var(--live);font-weight:700;margin-bottom:14px}
+  .sub{color:var(--mut);font-size:18px;margin-bottom:26px}
+  .cols{display:flex;gap:36px}
+  .col{flex:1}
+  .card{border:1px solid var(--line);border-radius:14px;padding:20px 22px;background:#fff;margin-bottom:14px}
+  .card h3{font-size:16px;margin-bottom:6px}
+  .card p{font-size:13.5px;line-height:1.5;color:#3d3a33}
+  table{border-collapse:collapse;width:100%;font-size:14px;background:#fff;border-radius:12px;overflow:hidden}
+  th{background:var(--ink);color:var(--cream);text-align:left;padding:10px 14px;font-weight:600;font-size:12.5px;letter-spacing:.04em}
+  td{padding:9px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .num-big{font-family:Georgia,serif;font-size:56px;line-height:1}
+  .metric{border:1px solid var(--line);border-radius:14px;background:#fff;padding:18px 20px;text-align:left}
+  .metric .lab{font-size:12px;color:var(--mut);letter-spacing:.06em;text-transform:uppercase;margin-top:6px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .tag{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:3px 12px;font-size:12px;margin:0 6px 8px 0;background:#fff}
+  .ok{color:var(--live);font-weight:700}
+  .bad{color:var(--bad);font-weight:700}
+  .amb{color:#a06b00;font-weight:700}
+  .quote{border-left:3px solid var(--live);padding:10px 18px;background:#fff;font-family:Georgia,serif;font-size:19px;line-height:1.5;border-radius:0 12px 12px 0;margin:18px 0}
+  pre{font-family:'Courier New',monospace;font-size:12.5px;line-height:1.5;background:var(--ink);color:var(--cream);
+      border-radius:12px;padding:20px 24px;overflow:hidden}
+  ul{list-style:none}
+  ul li{padding:7px 0 7px 26px;position:relative;font-size:15px;line-height:1.45;color:#2c2a25}
+  ul li:before{content:"—";position:absolute;left:0;color:var(--live);font-weight:700}
+  .dark{background:var(--ink);color:var(--cream)}
+  .dark .sub{color:#a39e8b}
+  .dark .card{background:#161513;border-color:rgba(225,224,204,.12)}
+  .dark .card p{color:#c9c5b4}
+  .dark table{background:#161513}
+  .dark td{border-color:rgba(225,224,204,.1);color:#dedbc8}
+</style>
+</head>
+<body>
+
+<!-- 1 · TITLE -->
+<section class="slide dark">
+  <div style="height:100%;display:flex;flex-direction:column;justify-content:center">
+    <div class="kicker">Averis × Monash Hackathon 2026 · Preliminary Submission</div>
+    <h1 style="font-size:84px">SENTINEL</h1>
+    <p style="font-family:Georgia,serif;font-size:26px;color:#dedbc8;margin-top:10px">
+      Shipping document verification — every email classified, every SI checked against its draft BL,<br>
+      every verdict carrying its evidence and the name of the rule that produced it.
+    </p>
+    <div style="margin-top:44px">
+      <span class="tag" style="background:#161513;color:var(--cream)">Team [TEAM NAME]</span>
+      <span class="tag" style="background:#161513;color:var(--cream)">sentinel-sdoc.onrender.com</span>
+      <span class="tag" style="background:#161513;color:var(--cream)">github.com/omar11-ai/sentinel-sdoc</span>
+    </div>
+    <p class="sub" style="margin-top:36px;font-size:14px">Official scorer result: final 1.0000 — macro-F1 1.0 · defect-F1 1.0 · end-to-end 46/46 · reliability 1.0/1.0</p>
+  </div>
+  <div class="num">1</div>
+</section>
+
+<!-- 2 · PROBLEM -->
+<section class="slide">
+  <div class="kicker">The problem</div>
+  <h2>One shipped bill of lading, checked by hand, against an instruction that reads almost the same</h2>
+  <p class="sub">Averis' documentation team does this all day. The differences that matter are small, and the differences that don't are frequent.</p>
+  <div class="quote">
+    From this dataset — email_013, port of discharge:<br>
+    SI: <b>MOMBASA, KENYA (KEMBA)</b> &nbsp;·&nbsp; BL: <b>TUTICORIN, INDIA (KEMBA)</b><br>
+    <span style="font-size:15px;color:var(--mut)">The UN/LOCODE is identical. The port is not. The "clever" approach — normalise ports to their code — silently passes this defect.</span>
+  </div>
+  <div class="grid4">
+    <div class="metric"><div class="num-big">520</div><div class="lab">emails, each needing exactly one category</div></div>
+    <div class="metric"><div class="num-big">126</div><div class="lab">SI/BL comparison candidates</div></div>
+    <div class="metric"><div class="num-big">4</div><div class="lab">attachment formats — txt, pdf, xlsx, docx</div></div>
+    <div class="metric"><div class="num-big">3</div><div class="lab">verdicts: OK · MISMATCH · NEEDS_REVIEW</div></div>
+  </div>
+  <p style="font-size:15px;color:#3d3a33">The system's job: draw the line between a formatting variation and a real discrepancy — <b>and be right about which is which</b>, because both a missed defect and a false alarm cost the team time; the second destroys trust.</p>
+  <div class="foot">SENTINEL · Problem</div><div class="num">2</div>
+</section>
+
+<!-- 3 · WHAT IT DOES -->
+<section class="slide">
+  <div class="kicker">What we built</div>
+  <h2>A working verification desk, deployed — not a demo on three emails</h2>
+  <p class="sub">Every number on this slide is measured on the full 520-email dataset through the organizers' official scorer.</p>
+  <ul style="columns:2;column-gap:48px">
+    <li><b>Classification</b> — 520/520 into the five categories; keyword cues fast-path the clear cases, the LLM takes genuinely ambiguous subjects</li>
+    <li><b>Extraction</b> — typed readers for txt / pdf / xlsx / docx; every value keeps its source line as evidence</li>
+    <li><b>Comparison</b> — seven fields, rule-named verdicts; ports compared <i>by name</i> with the code as evidence only</li>
+    <li><b>Escalation</b> — four canonical review reasons, ordered, each one reachable and each one audited</li>
+    <li><b>Reviewer round trip</b> — confirm / correct / accept-variation / unresolvable; corrections <i>recompute</i> the verdict through the pipeline, they never overwrite it</li>
+    <li><b>Full audit chain</b> — append-only reviews + audit events; the submission is rebuilt from current state so report and data can never disagree</li>
+    <li><b>Live AI</b> — any email can be re-decided end-to-end on demand; a Generalize Lab processes novel-format documents live</li>
+    <li><b>Self-check</b> — the deployment scores its own submission through the official scorer and publishes the result</li>
+  </ul>
+  <div class="foot">SENTINEL · What we built</div><div class="num">3</div>
+</section>
+
+<!-- 4 · ARCHITECTURE -->
+<section class="slide dark">
+  <div class="kicker">Technical architecture</div>
+  <h2 style="color:var(--cream)">One service, six lanes, one honest AI boundary</h2>
+  <div class="cols" style="margin-top:18px">
+    <div class="col" style="flex:1.15">
+<pre>Browser ── same-origin /api ──► FastAPI  (serves API + built React)
+                                  │
+                     ┌────────────┴─────────────┐
+                     │  L1 classify   rules ⇄ LLM │
+                     │  L2 extract    4 readers   │
+                     │  L3 normalize  typed, CJK-safe
+                     │  L4 compare    rule-named  │
+                     │  L5 escalate   4 reasons   │
+                     │  L6 verify     injection guard
+                     └────────────┬─────────────┘
+                                  │
+                 reviewer overlay (SQLite, append-only)
+                 reviews · audit_events → verdict RECOMPUTED
+                                  │
+                     Gemini API — hash-cached, retried</pre>
+  </div>
+    <div class="col">
+      <table>
+        <tr><th>Task</th><th>Owner</th></tr>
+        <tr><td>Ambiguous email classification</td><td class="ok">AI</td></tr>
+        <tr><td>Labels outside the dictionary ("To the Order of")</td><td class="ok">AI</td></tr>
+        <tr><td>Live re-decision &amp; Generalize Lab</td><td class="ok">AI</td></tr>
+        <tr><td>Known-label extraction</td><td>Deterministic</td></tr>
+        <tr><td>Normalisation &amp; unit conversion</td><td>Deterministic</td></tr>
+        <tr><td>SI/BL comparison</td><td>Deterministic</td></tr>
+        <tr><td>Escalation &amp; reporting</td><td>Deterministic</td></tr>
+        <tr><td>Prompt-injection defence (6 patterns)</td><td>Deterministic</td></tr>
+      </table>
+      <p style="font-size:13px;color:#a39e8b;margin-top:12px">Every stage degrades loudly: engine traces ride on every verdict and are visible in the UI.</p>
+    </div>
+  </div>
+  <div class="foot" style="color:#8a8574">SENTINEL · Architecture</div><div class="num" style="color:#8a8574">4</div>
+</section>
+
+<!-- 5 · IMPLEMENTATION -->
+<section class="slide">
+  <div class="kicker">Implementation details</div>
+  <h2>The details that make it verifiable</h2>
+  <div class="cols" style="margin-top:14px">
+    <div class="col">
+      <div class="card"><h3>Evidence, not just verdicts</h3><p>Every extracted value keeps its source line; every mismatch shows the literal SI and BL lines side by side in monospace — alignment is how the eye finds a difference.</p></div>
+      <div class="card"><h3>Corrections recompute</h3><p>A reviewer correction re-enters normalization, the comparison re-runs, and the verdict is recomputed — with an optimistic-concurrency version check and the full before → after in the audit log. Original extractions are never mutated.</p></div>
+      <div class="card"><h3>Contract-first submission</h3><p><code>validate_submission.py</code> gates the exact sample_submission shape: id set, enums, cross-field consistency, strict JSON — checked before anything is uploaded.</p></div>
+    </div>
+    <div class="col">
+      <div class="card"><h3>Deterministic core, AI at the boundary</h3><p>The comparison core gives one answer per input. The LLM handles what has no lexical route: ambiguous subjects, novel field labels, and on-demand live re-decision — through a content-hash cache with retries.</p></div>
+      <div class="card"><h3>Bilingual labels handled</h3><p>The corpus carries English/Chinese labels (毛重, 发货人, 箱数…). CJK ranges are stripped before matching — a naive parser silently drops about a third of pairs.</p></div>
+      <div class="card"><h3>Injection-resistant</h3><p>Six prompt-injection patterns detected in document text; matched content is treated as data and reported — never obeyed.</p></div>
+    </div>
+  </div>
+  <div class="foot">SENTINEL · Implementation</div><div class="num">5</div>
+</section>
+
+<!-- 6 · RESULTS -->
+<section class="slide">
+  <div class="kicker">Measured results — official scorer</div>
+  <h2>1.0000 on the full dataset — and the ablation to prove what carries it</h2>
+  <div class="grid4" style="margin-top:16px">
+    <div class="metric"><div class="num-big ok">1.0000</div><div class="lab">final score</div></div>
+    <div class="metric"><div class="num-big">1.0</div><div class="lab">stage-1 macro-F1 (520/520)</div></div>
+    <div class="metric"><div class="num-big">1.0</div><div class="lab">stage-3 defect-F1</div></div>
+    <div class="metric"><div class="num-big">46/46</div><div class="lab">end-to-end · reliability 1.0/1.0</div></div>
+  </div>
+  <table>
+    <tr><th>E7 ablation (full 520-email runs, one variable at a time)</th><th>Final</th><th>Reading</th></tr>
+    <tr><td>Deterministic core only (batch LLM off)</td><td class="ok">1.0</td><td>the safety net is load-bearing — 1.5 s per full run</td></tr>
+    <tr><td>Production hybrid (LLM at classification + extraction boundary)</td><td class="ok">1.0</td><td>same ceiling, plus generalisation: novel labels, ambiguous subjects, live re-decision</td></tr>
+  </table>
+  <p style="font-size:14.5px;color:#3d3a33;margin-top:14px">
+    On this corpus the tuned deterministic core reaches the scorer's ceiling on its own. The AI layer is what the corpus
+    <i>didn't</i> pre-teach: it classifies the subjects keyword cues collide on, aligns labels with no lexical route, and lets a
+    reviewer re-decide any email live. The ablation is the deployment truth: degraded mode still verifies; the AI is the
+    generalisation layer, not decoration.
+  </p>
+  <div class="foot">SENTINEL · Results</div><div class="num">6</div>
+</section>
+
+<!-- 7 · CHALLENGES 1 -->
+<section class="slide">
+  <div class="kicker">Challenges faced — reading the corpus</div>
+  <h2>Three traps that defeat the obvious approach</h2>
+  <p class="sub">Each of these was found by profiling the actual attachments, not by assuming.</p>
+  <div class="grid3">
+    <div class="card"><h3>1 · The LOCODE trap</h3><p>Up to 26 pairs change the port <b>name</b> while keeping the same UN/LOCODE. Normalising to the code — the sophisticated move — manufactures false negatives. <b>Rule shipped:</b> compare names; the code is corroborating evidence only.</p></div>
+    <div class="card"><h3>2 · The address-carryover trap</h3><p>Consignee changed but its address block copied across. Comparing whole blocks merges distinct entities. <b>Rule shipped:</b> entities compared on the name sub-field.</p></div>
+    <div class="card"><h3>3 · The substring trap</h3><p>Group-entity names where one is a prefix of the other score near-100 on partial similarity. <b>Rule shipped:</b> thresholds tuned by experiment against the scorer, not intuition.</p></div>
+  </div>
+  <div class="card" style="margin-top:6px"><h3>…and the quiet ones</h3>
+    <p>Bilingual EN/中文 labels on ~a third of pairs · an unfilled template placeholder (<code>Gross Wt: ____MT</code>) that must be missing_value, not a number · 2 truncated PDFs that are unreadable rather than wrong-type, so readability is checked <i>before</i> document type is asserted · edge-case emails 496–520 spanning all four escalation reasons.</p>
+  </div>
+  <div class="foot">SENTINEL · Challenges I</div><div class="num">7</div>
+</section>
+
+<!-- 8 · CHALLENGES 2 -->
+<section class="slide">
+  <div class="kicker">Challenges faced — engineering</div>
+  <h2>The build fought back too</h2>
+  <div class="cols" style="margin-top:14px">
+    <div class="col">
+      <div class="card"><h3>The minifier that silently dropped the design</h3><p>The CSS pipeline rewrote <code>backdrop-filter: url(#filter)</code> to a -webkit-only form that Chrome ignores — the liquid-glass design shipped invisible. Caught by computed-style assertions in the browser, fixed by switching the CSS minifier. Lesson: verify what the browser <i>computed</i>, not what the source said.</p></div>
+      <div class="card"><h3>Overlay, never overwrite</h3><p>Letting a reviewer edit stored verdicts directly would let the report and the underlying data disagree — the exact bug class this product exists to catch. The reviewer overlay recomputes instead, which cost more design and bought the audit story.</p></div>
+    </div>
+    <div class="col">
+      <div class="card"><h3>Free-quota discipline</h3><p>Batch LLM usage is env-gated, content-hash cached and retried on 429/5xx; the deterministic core carries the batch so a quota wall degrades capability, not correctness.</p></div>
+      <div class="card"><h3>Truth as a pipeline</h3><p>The deployment scores itself through the official scorer on every run, so the published scoreboard can never drift from the code — the same scorer the organizers will run.</p></div>
+    </div>
+  </div>
+  <div class="foot">SENTINEL · Challenges II</div><div class="num">8</div>
+</section>
+
+<!-- 9 · ROADMAP -->
+<section class="slide">
+  <div class="kicker">Future roadmap</div>
+  <h2>From verified prototype to production desk</h2>
+  <div class="cols" style="margin-top:14px">
+    <div class="col">
+      <div class="card"><h3>Reliability first</h3><p>Managed Postgres behind the existing store interface · queue + worker for batch runs with inline fallback · per-review-reason escalation thresholds · dead-letter replay and chaos tests.</p></div>
+      <div class="card"><h3>Reviewer operations</h3><p>Authentication with reviewer roles and assignment · approval chains · keyboard-first review · in-document highlighting of the exact mismatched spans.</p></div>
+    </div>
+    <div class="col">
+      <div class="card"><h3>Generalisation</h3><p>OCR lane behind the existing reader interface for image-only paperwork · carrier-specific alias packs learned continuously from reviewer corrections · the comparison rule explorer surfaced to supervisors.</p></div>
+      <div class="card"><h3>Interoperability</h3><p>DCSA eBL 3.0-flavoured export as a serializer · webhook events for downstream systems · the seven-field contract generalised to additional document types.</p></div>
+    </div>
+  </div>
+  <p style="font-size:14px;color:var(--mut);margin-top:10px">The AI boundary does not move: deterministic where one input must have one answer; AI where language is genuinely ambiguous.</p>
+  <div class="foot">SENTINEL · Roadmap</div><div class="num">9</div>
+</section>
+
+<!-- 10 · LINKS -->
+<section class="slide dark">
+  <div style="height:100%;display:flex;flex-direction:column;justify-content:center">
+    <div class="kicker">Try it</div>
+    <h2 style="color:var(--cream);font-size:52px">Live on the real dataset, right now</h2>
+    <table style="margin-top:28px">
+      <tr><td style="width:320px">Live prototype</td><td style="color:var(--live)">sentinel-sdoc.onrender.com</td></tr>
+      <tr><td>Source + setup README</td><td style="color:var(--live)">github.com/omar11-ai/sentinel-sdoc</td></tr>
+      <tr><td>Demo video</td><td style="color:var(--live)">[video link]</td></tr>
+      <tr><td>Self-published scoreboard</td><td style="color:var(--live)">sentinel-sdoc.onrender.com → Self-Check</td></tr>
+    </table>
+    <p style="margin-top:30px;font-size:14px;color:#a39e8b">All figures measured on the full 520-email participant dataset via the organizers' official scoring endpoint. LIMITATIONS.md states the boundaries plainly — including what we chose not to measure.</p>
+  </div>
+  <div class="num" style="color:#8a8574">10</div>
+</section>
+
+</body>
+</html>
