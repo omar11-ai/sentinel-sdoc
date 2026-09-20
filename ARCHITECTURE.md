@@ -35,7 +35,7 @@ one thing that can break.
 
 ## The AI boundary — the honest centre
 
-**Measured honestly (E7 ablation, `runs.csv`):** on this corpus the deterministic core
+**Measured honestly (E7 ablation, `artifacts/runs.csv`):** on this corpus the deterministic core
 alone reaches the official ceiling. The AI is the engagement layer for the cases the
 corpus never taught — ambiguous subjects, unseen labels, live re-verification — not a
 second engine duplicating the rules.

@@ -9,7 +9,7 @@ Method first, then results, then what we could not measure and why.
   the same code path `/api/submit` uses. We never tuned against manual
   guesses; we tuned against `/submit`.
 - **One variable per run.** Each configuration change was measured in
-  isolation and logged to `runs.csv` (leg, final score, block scores,
+  isolation and logged to `artifacts/runs.csv` (leg, final score, block scores,
   duration).
 - **Final-verification only.** The answer key was used exclusively to verify
   finished configurations through the official scorer, never to derive
@@ -64,9 +64,9 @@ for everything the corpus did not pre-teach.
   low-confidence documents and its output is normalised and range-checked;
   the scored end-to-end result bounds its effect but does not isolate a rate.
 - **`hybrid_cls_only`.** The leg is scripted (`experiments.py`) and will be
-  filled from the same runs.csv; the Gemini free-tier quota window on the
+  filled from the same artifacts/runs.csv; the Gemini free-tier quota window on the
   build day did not leave room for the extra batch before this file was
-  written. `runs.csv` is the source of truth.
+  written. `artifacts/runs.csv` is the source of truth.
 - **Latency percentiles under load.** Single-request latencies are visible in
   the live session counters (`ai_session.llm_calls`, per-email `elapsed_s`);
   a load-test p50/p95 was not run for the preliminary round.
@@ -76,7 +76,7 @@ for everything the corpus did not pre-teach.
 ```bash
 python3 -m pytest tests/ -q            # 23 tests: the three corpus traps as named
                                        # cases + full-520 verdict regression + contract
-python3 experiments.py                 # all legs → runs.csv
+python3 experiments.py                 # all legs → artifacts/runs.csv
 python3 validate_submission.py --url http://localhost:8000/api/submission
 curl -s -X POST http://localhost:8000/api/submit -H 'Content-Type: application/json' \
      -d "$(curl -s http://localhost:8000/api/submission)"   # official score of the live state

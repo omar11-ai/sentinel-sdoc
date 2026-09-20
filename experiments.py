@@ -14,7 +14,7 @@ deterministic core removes the system's safety net rather than measuring a
 shippable configuration. The shipped axis is hybrid vs deterministic, and the
 classifier-only leg shows where the AI contribution actually lives.
 
-Output: runs.csv (leg, final, e2e, macroF1, defectF1, reliability, seconds).
+Output: artifacts/runs.csv (leg, final, e2e, macroF1, defectF1, reliability, seconds).
 """
 from __future__ import annotations
 
@@ -82,7 +82,8 @@ def main() -> int:
         rows.append(row)
         print(f"✓ {name}: final={row['final']} in {dt}s")
 
-    csv_path = ROOT / "runs.csv"
+    (ROOT / "artifacts").mkdir(exist_ok=True)
+    csv_path = ROOT / "artifacts" / "runs.csv"
     new = not csv_path.exists()
     with csv_path.open("a", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=["leg", "final", "e2e", "macroF1", "defectF1",
