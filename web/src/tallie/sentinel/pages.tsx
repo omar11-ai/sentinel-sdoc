@@ -55,6 +55,7 @@ import {
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useSentinel, type EmailRecord } from './context'
+import { useGlobalSearch } from './search'
 import { EmailDetailsSheet } from './EmailSheet'
 import { FeatureCard } from './cinematic/FeatureCard'
 import { useDashboardNavigation } from '../components/tallie/navigation'
@@ -780,6 +781,7 @@ const filters: { value: Filter; label: string }[] = [
 
 export function InboxPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) => void }) {
   const { results, recheck, applyRecheck } = useSentinel()
+  const { searchQuery } = useGlobalSearch()
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
   const [eng, setEng] = useState<'all' | 'rules' | 'ai'>('all')
@@ -788,7 +790,7 @@ export function InboxPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) => vo
 
   const emails = results?.emails ?? []
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
+    const q = (query.trim() || searchQuery.trim()).toLowerCase()
     return emails.filter((e) => {
       if (filter === 'LOWCONF') {
         if ((e.category_confidence ?? 0) >= 0.8) return false
@@ -803,7 +805,7 @@ export function InboxPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) => vo
         .toLowerCase()
         .includes(q)
     })
-  }, [emails, filter, eng, query])
+  }, [emails, filter, eng, query, searchQuery])
 
   async function runRowAi(id: string) {
     setAiRow(id)

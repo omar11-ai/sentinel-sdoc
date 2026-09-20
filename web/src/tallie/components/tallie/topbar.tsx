@@ -30,12 +30,32 @@ import {
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { currentUser, notifications } from '../../data'
 import { useGlobalSearch } from '../../sentinel/search'
+import { useDashboardNavigation } from './navigation'
 
 export function DashboardTopbar() {
   const { searchQuery, setSearchQuery } = useGlobalSearch()
+  const { pathname, navigate } = useDashboardNavigation()
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const mobileSearchInputRef = useRef<HTMLInputElement>(null)
+
+  /* ⌘K / Ctrl+K focuses the global search box; typing jumps to the inbox
+     and filters it live (the inbox also listens to the shared query). */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        ;(searchInputRef.current ?? mobileSearchInputRef.current)?.focus()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  const onGlobalSearch = (value: string) => {
+    setSearchQuery(value)
+    if (value.trim() && pathname !== '/inbox') navigate('/inbox')
+  }
 
   const openMobileSearch = () => {
     setIsMobileSearchOpen(true)
@@ -87,7 +107,7 @@ export function DashboardTopbar() {
               aria-label="Find a control"
               placeholder="find a control"
               value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
+              onChange={(event) => onGlobalSearch(event.target.value)}
             />
           </InputGroup>
           <Button
@@ -116,7 +136,7 @@ export function DashboardTopbar() {
                 aria-label="Find a control"
                 placeholder="find a control"
                 value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
+                onChange={(event) => onGlobalSearch(event.target.value)}
               />
               {searchQuery === '' ? (
                 <InputGroupAddon
