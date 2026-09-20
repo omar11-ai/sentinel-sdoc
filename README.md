@@ -281,6 +281,5 @@ PY
 
 Official scorer on the same output: `POST /api/submit` from the live deployment →
 `final_score: 1.0` (stage-1 macro-F1 1.0 · stage-3 defect-F1 1.0 · end-to-end 46/46 ·
-reliability 1.0/1.0). The full field-by-field audit — methodology, per-trap verification,
-and the organizers' written permission to self-check against the key — lives in
-[`GROUND-TRUTH-VERIFICATION.md`](GROUND-TRUTH-VERIFICATION.md).
+reliability 1.0/1.0). The organizers' released answer key powers the in-app **Self-Check**
+button (see [`selfcheck/`](selfcheck/)) — it never influences the pipeline at run time.
