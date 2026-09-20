@@ -183,7 +183,7 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
   const selfCheck = useCallback(async () => {
     const sub = await getJson<{ submission: Record<string, unknown> }>('/api/submission')
     const j = await getJson<{
-      scoreboard?: { final_score?: number; stage1?: { macro_f1?: number }; stage3?: { defect_f1?: number }; end_to_end?: number; reliability?: { escalation_f1?: number } }
+      scoreboard?: { final_score?: number; stage1?: { macro_f1?: number }; stage3?: { defect_f1?: number }; end_to_end?: { success?: number; total?: number; rate?: number }; reliability?: { escalation_f1?: number } }
       source?: string
       message?: string
     }>('/api/submit', {
@@ -196,7 +196,7 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
         `Official scoreboard — final ${j.scoreboard.final_score}` +
         ` · macro F1 ${j.scoreboard.stage1?.macro_f1}` +
         ` · defect F1 ${j.scoreboard.stage3?.defect_f1}` +
-        ` · E2E ${j.scoreboard.end_to_end}` +
+        ` · E2E ${j.scoreboard.end_to_end?.success ?? 0}/${j.scoreboard.end_to_end?.total ?? 0}` +
         ` · escalation F1 ${j.scoreboard.reliability?.escalation_f1}`
       )
     }

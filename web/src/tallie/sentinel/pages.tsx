@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'motion/react'
 import {
   Area,
@@ -782,7 +782,12 @@ const filters: { value: Filter; label: string }[] = [
 export function InboxPage({ onOpenEmail }: { onOpenEmail: (e: EmailRecord) => void }) {
   const { results, recheck, applyRecheck } = useSentinel()
   const { searchQuery } = useGlobalSearch()
-  const [filter, setFilter] = useState<Filter>('all')
+  const { pathname } = useDashboardNavigation()
+  /* deep link: /inbox/mismatch (sidebar "Mismatches") opens with the mismatch filter applied */
+  const [filter, setFilter] = useState<Filter>(() => (pathname.startsWith('/inbox/mismatch') ? 'MISMATCH' : 'all'))
+  useEffect(() => {
+    if (pathname.startsWith('/inbox/mismatch')) setFilter('MISMATCH')
+  }, [pathname])
   const [query, setQuery] = useState('')
   const [eng, setEng] = useState<'all' | 'rules' | 'ai'>('all')
   const [aiRow, setAiRow] = useState<string | null>(null)
