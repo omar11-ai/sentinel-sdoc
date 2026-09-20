@@ -70,6 +70,8 @@ for everything the corpus did not pre-teach.
 ## Reproduce
 
 ```bash
+python3 -m pytest tests/ -q            # 23 tests: the three corpus traps as named
+                                       # cases + full-520 verdict regression + contract
 python3 experiments.py                 # all legs → runs.csv
 python3 validate_submission.py --url http://localhost:8000/api/submission
 curl -s -X POST http://localhost:8000/api/submit -H 'Content-Type: application/json' \
