@@ -1369,6 +1369,9 @@ export function ArchitecturePage() {
     ['GET /api/scoreboard', 'official-scorer breakdown — confusion, per-class P/R/F1, score journey'],
     ['GET /README.md · /SCORES.md', 'public docs — served'],
     ['POST /api/emails/{id}/decision', 'human review decision — approve / flag (session overlay)'],
+    ['GET · POST /api/emails/{id}/review', 'reviewer round trip — confirm / correct / accept-variation / unresolvable (corrections recompute; version-checked)'],
+    ['GET /api/audit', 'append-only audit chain — every reviewer action, before → after'],
+    ['GET /api/selfwarm', 'one-URL keep-warm ping (no-store)'],
   ]
   return (
     <div className="flex flex-col gap-8 px-4 py-6 md:px-8 md:py-10">
