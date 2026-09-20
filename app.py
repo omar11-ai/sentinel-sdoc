@@ -369,6 +369,18 @@ def _prewarm_ai() -> None:
         pass
 
 
+@app.get("/api/selfwarm")
+async def selfwarm():
+    """Keep-warm endpoint: a headless render of the dashboard (any external
+    cron / uptime pinger can hit this single lightweight URL). Returns quick
+    health + a no-cache hint so CDNs don't absorb the ping."""
+    r = _ensure_results()
+    return JSONResponse({"status": "ok", "emails": r.get("summary", {}).get("total", 0),
+                         "ts": __import__("datetime").datetime.now(__import__("datetime")
+                         .timezone.utc).isoformat(timespec="seconds")},
+                        headers={"Cache-Control": "no-store"})
+
+
 @app.on_event("startup")
 async def _startup_prewarm() -> None:
     import threading as _th
