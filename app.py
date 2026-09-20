@@ -13,7 +13,8 @@ from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import config                      # noqa: E402
+import config
+import review_store                      # noqa: E402
 from loader import Inbox           # noqa: E402
 from pipeline import run           # noqa: E402
 from llm import LLMClient          # noqa: E402
@@ -49,10 +50,82 @@ def _ensure_results() -> dict:
     return _STATE["results"]
 
 
+def _replay_reviews() -> int:
+    """Re-apply persisted reviewer corrections to a fresh run (originals are
+    never mutated — the overlay is deterministic from the reviews table)."""
+    try:
+        applied = 0
+        for rv in review_store.all_reviews_asc():
+            entry = next((e for e in _ensure_results().get("emails", [])
+                          if e["email_id"] == rv["email_id"]), None)
+            if entry is None:
+                continue
+            try:
+                _mutate_entry(entry, rv["action"], rv.get("field"),
+                              rv.get("new_value") or "", "bl")
+                applied += 1
+            except Exception:  # noqa: BLE001 — a stale row must never kill startup
+                continue
+        return applied
+    except Exception:  # noqa: BLE001
+        return 0
+
+
+def _mutate_entry(entry: dict, action: str, field: str | None, new_value: str,
+                  side: str = "bl") -> dict:
+    """Apply a review action to an in-memory result entry (no logging here)."""
+    from compare import compare as _cmp
+    from normalize import norm_value
+
+    if action == "reject_flag" and field:
+        cmp0 = entry.get("comparison") or {"defects": [], "missing": [], "matched": []}
+        defects = [d for d in (cmp0.get("defects") or []) if d.get("field") != field]
+        matched = list(cmp0.get("matched") or []) + [field]
+        entry["comparison"] = {**cmp0, "defects": defects, "matched": matched}
+        entry["defects"] = defects
+        entry["defect_fields"] = [d["field"] for d in defects]
+        entry["has_defect"] = bool(defects)
+        if entry.get("status") == "MISMATCH":
+            entry["status"] = "OK" if not defects else "MISMATCH"
+        return entry
+
+    if action == "correct" and field:
+        doc = entry.get(side or "bl") or entry.get("si")
+        if not doc or not doc.get("fields"):
+            raise ValueError(f"no {side} document to correct")
+        val, disp = norm_value(field, new_value or "")
+        if val == "BLANK":
+            raise ValueError("corrected value is blank")
+        prev = doc["fields"].get(field) or {}
+        doc["fields"][field] = {"value": val, "display": disp, "blank": False,
+                                "line": prev.get("line", ""),
+                                "reviewer_corrected": True}
+        si_doc = {"fields": entry["si"]["fields"]} if entry.get("si") else None
+        bl_doc = {"fields": entry["bl"]["fields"]} if entry.get("bl") else None
+        if si_doc and bl_doc:
+            cmp1 = _cmp(si_doc, bl_doc)
+            entry["comparison"] = cmp1
+            entry["defects"] = cmp1["defects"]
+            entry["defect_fields"] = [d["field"] for d in cmp1["defects"]]
+            entry["has_defect"] = bool(cmp1["defects"])
+            if entry.get("status") in ("MISMATCH", "OK"):
+                entry["status"] = "MISMATCH" if cmp1["defects"] else "OK"
+        return entry
+
+    if action == "unresolvable":
+        entry["status"] = "NEEDS_REVIEW"
+        entry["review_reason"] = f"reviewer_unresolvable — {new_value or 'no note'}"
+        return entry
+
+    return entry
+
+
 @app.on_event("startup")
 async def _startup() -> None:
     try:
+        review_store.init()
         _ensure_results()
+        _replay_reviews()
     except Exception as e:  # noqa: BLE001 — never block startup; dashboard shows the error
         _STATE["results"] = {"error": str(e), "emails": [], "summary": {}, "submission": {},
                              "config": {}, "generated_at": None, "elapsed_s": 0}
@@ -134,9 +207,16 @@ async def scores_md():
 
 @app.get("/api/submission")
 async def submission():
-    """The system's own submission document (what /submit would send)."""
+    """The system's own submission document (what /submit would send).
+    Rebuilt from the CURRENT results so reviewer corrections are reflected —
+    the report and the underlying data can never disagree."""
     r = _ensure_results()
-    return JSONResponse({"submission": r.get("submission", {})})
+    try:
+        import schema
+        sub = schema.build_submission(r.get("emails", []))
+    except Exception:  # noqa: BLE001 — fall back to the run-time snapshot
+        sub = r.get("submission", {})
+    return JSONResponse({"submission": sub})
 
 
 @app.get("/api/emails/{email_id}")
@@ -321,6 +401,90 @@ async def email_decision(email_id: str, d: Decision):
     return JSONResponse({"email_id": email_id, **dec,
                          "human_decisions": _STATE["human_decisions"],
                          "ai_session": _STATE.get("ai_session")})
+
+
+class ReviewAction(BaseModel):
+    action: str  # confirm | correct | reject_flag | unresolvable
+    field: str | None = None
+    new_value: str = ""
+    side: str = "bl"  # which document the correction applies to
+    note: str = ""
+    reviewer: str = "demo-reviewer"
+    version: int  # optimistic concurrency — mandatory
+
+
+@app.get("/api/audit")
+async def audit_tail():
+    """Newest audit events across all entities (the accountability chain)."""
+    return JSONResponse({"events": review_store.recent_audit()})
+
+
+@app.get("/api/emails/{email_id}/review")
+async def review_state(email_id: str):
+    return JSONResponse({
+        "email_id": email_id,
+        "version": review_store.version_for(email_id),
+        "history": review_store.history(email_id),
+        "audit": review_store.audit_for(email_id),
+    })
+
+
+@app.post("/api/emails/{email_id}/review")
+async def review_act(email_id: str, act: ReviewAction):
+    """Reviewer round trip (blueprint §8): confirm / correct / reject_flag /
+    unresolvable. Corrections recompute the verdict — they never overwrite it."""
+    r = _ensure_results()
+    entry = next((e for e in r.get("emails", []) if e["email_id"] == email_id), None)
+    if entry is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    if act.action not in ("confirm", "correct", "reject_flag", "unresolvable"):
+        return JSONResponse({"error": "action must be confirm|correct|reject_flag|unresolvable"},
+                            status_code=400)
+    current = review_store.version_for(email_id)
+    if int(act.version) != current:
+        return JSONResponse({"error": "version conflict", "version": current}, status_code=409)
+    if act.action == "correct" and (not act.field or not str(act.new_value).strip()):
+        return JSONResponse({"error": "correct requires field + new_value"}, status_code=400)
+    if act.action == "reject_flag" and not act.field:
+        return JSONResponse({"error": "reject_flag requires field"}, status_code=400)
+
+    before = {"status": entry.get("status"), "defect_fields": entry.get("defect_fields"),
+              "review_reason": entry.get("review_reason")}
+    old_value = None
+    if act.action == "correct":
+        doc = entry.get(act.side if act.side in ("si", "bl") else "bl") or entry.get("si")
+        old_value = ((doc or {}).get("fields", {}).get(act.field or "", {}) or {}).get("display")
+    if act.action == "reject_flag":
+        d0 = next((d for d in (entry.get("defects") or []) if d.get("field") == act.field), None)
+        old_value = f"SI {d0.get('si')} / BL {d0.get('bl')}" if d0 else act.field
+
+    try:
+        _mutate_entry(entry, act.action, act.field, str(act.new_value), act.side)
+    except Exception as e:  # noqa: BLE001 — surface a clean 400, never a crash
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+    after = {"status": entry.get("status"), "defect_fields": entry.get("defect_fields"),
+             "review_reason": entry.get("review_reason")}
+    review_store.log_review(email_id, current, act.reviewer, act.action, act.field,
+                            old_value, str(act.new_value) if act.action == "correct" else None,
+                            act.note or None)
+    review_store.log_audit("email", email_id, f"review_{act.action}", act.reviewer,
+                           before, after)
+    import datetime as _dt
+    _STATE.setdefault("human_decisions", {})[email_id] = {
+        "decision": {"confirm": "approved_as_is", "reject_flag": "flag_accepted",
+                     "unresolvable": "unresolvable"}.get(act.action, "corrected"),
+        "note": act.note, "field": act.field, "reviewer": act.reviewer,
+        "version": current + 1,
+        "at": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
+        "was": before,
+    }
+    return JSONResponse({"email_id": email_id, "action": act.action,
+                         "version": current + 1, "before": before, "after": after,
+                         "status": entry.get("status"),
+                         "defect_fields": entry.get("defect_fields"),
+                         "history": review_store.history(email_id),
+                         "audit": review_store.audit_for(email_id)})
 
 
 class Submission(BaseModel):

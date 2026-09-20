@@ -1,0 +1,2 @@
+leg,final,e2e,macroF1,defectF1,reliability,seconds,error
+deterministic_only,1.0,"{'success': 46, 'total': 46, 'rate': 1.0}",,,"{'escalation_recall': 1.0, 'escalation_precision': 1.0, 'escalation_f1': 1.0, 'gold_review': 20, 'pred_review': 20, 'per_reason': {'wrong_doc_type': {'total': 5, 'caught': 5}, 'missing_attachment': {'total': 5, 'caught': 5}, 'unreadable': {'total': 5, 'caught': 5}, 'missing_value': {'total': 5, 'caught': 5}}}",1.5,

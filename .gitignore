@@ -11,3 +11,4 @@ submissions/*.local.json
 # note: data/ IS committed — it is the PUBLIC participant bundle
 # (inbox/ attachments/ sample_submission.json) needed for cloud deployment.
 # verified: contains no ground_truth.json and no generator scripts.
+review_store.db

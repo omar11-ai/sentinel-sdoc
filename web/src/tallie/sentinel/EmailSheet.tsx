@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CheckIcon, TriangleAlertIcon, XIcon, ZapIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -89,16 +89,16 @@ function FieldRow({
       <div className="flex items-start gap-3 rounded-xl border bg-background p-3">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <p className="text-xs text-muted-foreground">SI (reference)</p>
-          <p className={cn('truncate text-sm font-medium tracking-tight', defect && 'text-(--status-exception)')}>
+          <p className={cn('font-mono text-sm tracking-tight', defect && 'text-(--status-exception)')}>
             {si ? si.display : '—'}
-            {si && si.line_no >= 0 ? <span className="ml-1 font-mono text-[10px] text-muted-foreground">L{si.line_no}</span> : null}
+            {si && si.line_no >= 0 ? <span className="ml-1 text-[10px] text-muted-foreground">L{si.line_no}</span> : null}
           </p>
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <p className="text-xs text-muted-foreground">BL</p>
-          <p className={cn('truncate text-sm font-medium tracking-tight', defect && 'text-(--status-exception)')}>
+          <p className={cn('font-mono text-sm tracking-tight', defect && 'text-(--status-exception)')}>
             {bl ? bl.display : '—'}
-            {bl && bl.line_no >= 0 ? <span className="ml-1 font-mono text-[10px] text-muted-foreground">L{bl.line_no}</span> : null}
+            {bl && bl.line_no >= 0 ? <span className="ml-1 text-[10px] text-muted-foreground">L{bl.line_no}</span> : null}
           </p>
         </div>
       </div>
@@ -120,6 +120,209 @@ function Note({ tone, children }: { tone: 'warn' | 'info' | 'bad'; children: Rea
   )
 }
 
+/* ---------- reviewer round trip (blueprint §8) ---------- */
+
+type ReviewRow = {
+  id: number
+  version: number
+  reviewer: string
+  action: string
+  field: string | null
+  old_value: string | null
+  new_value: string | null
+  reason_note: string | null
+  created_at: string
+}
+type AuditRow = {
+  id: number
+  event: string
+  actor: string
+  before: { status?: string } | null
+  after: { status?: string } | null
+  created_at: string
+}
+type ReviewState = { version: number; history: ReviewRow[]; audit: AuditRow[] }
+
+const ACTION_LABEL: Record<string, string> = {
+  confirm: 'confirmed verdict',
+  correct: 'corrected a value',
+  reject_flag: 'accepted variation (flag rejected)',
+  unresolvable: 'marked unresolvable',
+}
+
+function ReviewerPanel({
+  email,
+  onStatusChange,
+}: {
+  email: EmailRecord
+  onStatusChange: (s: EmailRecord['status'], defects: string[]) => void
+}) {
+  const [rev, setRev] = useState<ReviewState | null>(null)
+  const [reviewer, setReviewer] = useState('demo-reviewer')
+  const [note, setNote] = useState('')
+  const [corr, setCorr] = useState<Record<string, string>>({})
+  const [corrSide, setCorrSide] = useState<Record<string, 'bl' | 'si'>>({})
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const [okMsg, setOkMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    setRev(null)
+    setErr(null)
+    setOkMsg(null)
+    setCorr({})
+    if (!email?.email_id) return
+    fetch(`/api/emails/${email.email_id}/review`)
+      .then((r) => r.json())
+      .then((d: ReviewState) => setRev(d))
+      .catch(() => setRev(null))
+  }, [email?.email_id])
+
+  const defectList = email.comparison?.defects ?? []
+
+  async function act(
+    action: 'confirm' | 'correct' | 'reject_flag' | 'unresolvable',
+    field?: string,
+  ) {
+    setBusy(true)
+    setErr(null)
+    setOkMsg(null)
+    try {
+      const res = await fetch(`/api/emails/${email.email_id}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          field,
+          new_value: field ? (corr[field] ?? '') : note,
+          side: field ? (corrSide[field] ?? 'bl') : 'bl',
+          note,
+          reviewer: reviewer.trim() || 'demo-reviewer',
+          version: rev?.version ?? 0,
+        }),
+      })
+      const d = await res.json()
+      if (!res.ok) {
+        setErr(d.error ? `${d.error}${d.version != null ? ` (current v${d.version})` : ''}` : `HTTP ${res.status}`)
+        if (d.version != null && rev) setRev({ ...rev, version: d.version })
+        return
+      }
+      setRev({ version: d.version, history: d.history, audit: d.audit })
+      onStatusChange(d.status, d.defect_fields)
+      setOkMsg(
+        `✓ ${ACTION_LABEL[action]}${field ? ` — ${field}` : ''} · verdict recomputed (${d.status}) · v${d.version}`,
+      )
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-base font-medium tracking-tight">Reviewer round trip — corrections recompute</p>
+        <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs">v{rev?.version ?? 0}</span>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        The original extraction is never rewritten. A correction re-enters normalization, the comparison re-runs, and
+        the verdict is recomputed — every action lands in the audit trail.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <input
+          value={reviewer}
+          onChange={(e) => setReviewer(e.target.value)}
+          placeholder="reviewer name"
+          className="h-9 w-44 rounded-lg border bg-transparent px-3 font-mono text-xs outline-none focus:border-(--live)"
+        />
+        <input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="reason note for the audit trail…"
+          className="h-9 min-w-52 flex-1 rounded-lg border bg-transparent px-3 text-sm outline-none focus:border-(--live)"
+        />
+      </div>
+
+      {defectList.length ? (
+        <div className="flex flex-col gap-2">
+          {defectList.map((d) => (
+            <div key={d.field} className="flex flex-col gap-2 rounded-xl bg-zinc-50 px-3 py-2.5 dark:bg-muted">
+              <p className="text-sm font-medium tracking-tight">
+                {FIELD_LABEL[d.field] ?? d.field}
+                <span className="ml-2 font-mono text-xs text-muted-foreground">
+                  SI {String(d.si)} ≠ BL {String(d.bl)}
+                </span>
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={corrSide[d.field] ?? 'bl'}
+                  onChange={(e) => setCorrSide({ ...corrSide, [d.field]: e.target.value as 'bl' | 'si' })}
+                  className="h-8 rounded-lg border bg-background px-2 font-mono text-xs outline-none"
+                  aria-label={`document side to correct for ${d.field}`}
+                >
+                  <option value="bl">fix BL</option>
+                  <option value="si">fix SI</option>
+                </select>
+                <input
+                  value={corr[d.field] ?? ''}
+                  onChange={(e) => setCorr({ ...corr, [d.field]: e.target.value })}
+                  placeholder="corrected value (re-enters normalization)"
+                  className="h-8 min-w-48 flex-1 rounded-lg border bg-background px-2.5 font-mono text-xs outline-none focus:border-(--live)"
+                />
+                <Button variant="outline" className="h-8 rounded-lg px-3 text-xs" disabled={busy || !(corr[d.field] ?? '').trim()} onClick={() => void act('correct', d.field)}>
+                  Apply correction
+                </Button>
+                <Button variant="ghost" className="h-8 rounded-lg px-3 text-xs" disabled={busy} onClick={() => void act('reject_flag', d.field)}>
+                  Accept as match
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" className="h-9" disabled={busy} onClick={() => void act('confirm')}>
+          ✓ Confirm verdict as reviewed
+        </Button>
+        {email.status === 'NEEDS_REVIEW' || email.review_reason ? (
+          <Button variant="outline" className="h-9" disabled={busy} onClick={() => void act('unresolvable')}>
+            ⚖ Mark unresolvable
+          </Button>
+        ) : null}
+      </div>
+
+      {err ? <Note tone="bad">{err}</Note> : null}
+      {okMsg ? <p className="text-sm font-medium text-(--status-completed)">{okMsg}</p> : null}
+
+      {rev?.history?.length ? (
+        <div className="flex flex-col gap-1.5 rounded-xl border bg-zinc-50 p-3 font-mono text-xs dark:bg-muted">
+          <p className="font-sans text-sm font-medium">Review history</p>
+          {rev.history.map((h) => (
+            <p key={h.id}>
+              v{h.version + 1} · {h.created_at.slice(11, 19)} · {h.reviewer} · {ACTION_LABEL[h.action] ?? h.action}
+              {h.field ? ` — ${h.field}` : ''}
+              {h.old_value || h.new_value ? `: ${h.old_value ?? '—'} → ${h.new_value ?? '—'}` : ''}
+              {h.reason_note ? ` · “${h.reason_note}”` : ''}
+            </p>
+          ))}
+        </div>
+      ) : null}
+      {rev?.audit?.length ? (
+        <div className="flex flex-col gap-1.5 rounded-xl border bg-zinc-50 p-3 font-mono text-xs dark:bg-muted">
+          <p className="font-sans text-sm font-medium">Audit chain</p>
+          {rev.audit.map((a) => (
+            <p key={a.id}>
+              {a.created_at.slice(11, 19)} · {a.event} · {a.actor} · {a.before?.status ?? '—'} → {a.after?.status ?? '—'}
+            </p>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export function EmailDetailsSheet({
   email,
   open,
@@ -129,24 +332,19 @@ export function EmailDetailsSheet({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { recheck, llmOn, decide } = useSentinel()
+  const { recheck, llmOn } = useSentinel()
   const [ai, setAi] = useState<RecheckResult | null>(null)
   const [aiBusy, setAiBusy] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
-  const [decNote, setDecNote] = useState('')
-  const [decBusy, setDecBusy] = useState(false)
-  const [decDone, setDecDone] = useState<string | null>(null)
+  const [liveStatus, setLiveStatus] = useState<EmailRecord['status'] | null>(null)
+  const [liveDefects, setLiveDefects] = useState<string[] | null>(null)
 
-  async function handleDecide(d: 'approve_as_is' | 'flag_mismatch') {
-    if (!email) return
-    setDecBusy(true)
-    try {
-      await decide(email.email_id, d, decNote)
-      setDecDone(d)
-    } finally {
-      setDecBusy(false)
-    }
-  }
+  useEffect(() => {
+    setLiveStatus(null)
+    setLiveDefects(null)
+    setAi(null)
+    setAiError(null)
+  }, [email?.email_id])
 
   async function handleRecheck() {
     if (!email) return
@@ -163,7 +361,11 @@ export function EmailDetailsSheet({
   }
 
   if (!email) return null
-  const defects = new Set((email.comparison?.defects ?? []).map((d) => d.field))
+  const shownStatus = (liveStatus ?? email.status) as EmailRecord['status']
+  const shownDefects = liveDefects ?? (email.defect_fields ?? [])
+  const defects = new Set<string>(
+    liveDefects !== null ? shownDefects : (email.comparison?.defects ?? []).map((d) => d.field),
+  )
   const si = email.si?.fields ?? {}
   const bl = email.bl?.fields ?? {}
   const allFields = [
@@ -178,7 +380,7 @@ export function EmailDetailsSheet({
         <SheetHeader className="items-start gap-3">
           <div className="flex items-center gap-3">
             <SheetTitle className="font-serif text-2xl">{email.email_id}</SheetTitle>
-            <StatusCard status={email.status} />
+            <StatusCard status={shownStatus} />
           </div>
           <SheetDescription className="line-clamp-2 text-left">
             {email.subject}
@@ -238,33 +440,14 @@ export function EmailDetailsSheet({
           ) : null}
           {email.review_reason ? <Note tone="warn">⚖ ESCALATED — {email.review_reason}</Note> : null}
 
-          {email.status === 'NEEDS_REVIEW' || email.review_reason ? (
-            <div className="flex flex-col gap-2 rounded-xl border p-4">
-              <p className="text-base font-medium tracking-tight">Human review — close the loop</p>
-              <p className="text-xs text-muted-foreground">
-                You are the reviewer. Decisions are tracked as a session overlay — the audited bulk run is never silently rewritten.
-              </p>
-              <input
-                value={decNote}
-                onChange={(e) => setDecNote(e.target.value)}
-                placeholder="Optional note for the audit trail…"
-                className="h-9 rounded-lg border bg-transparent px-3 text-sm outline-none focus:border-(--live)"
-              />
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" className="h-9" disabled={decBusy} onClick={() => void handleDecide('approve_as_is')}>
-                  ✓ Approve as-is
-                </Button>
-                <Button variant="outline" className="h-9" disabled={decBusy} onClick={() => void handleDecide('flag_mismatch')}>
-                  ⚠ Flag as mismatch
-                </Button>
-              </div>
-              {decDone ? (
-                <p className="text-sm font-medium text-(--status-completed)">
-                  ✓ decision recorded — {decDone === 'approve_as_is' ? 'approved as-is' : 'flagged as mismatch'} · queue status updated
-                </p>
-              ) : null}
-            </div>
-          ) : null}
+          <ReviewerPanel
+            email={email}
+            onStatusChange={(s, df) => {
+              setLiveStatus(s)
+              setLiveDefects(df)
+            }}
+          />
+
           {email.corpus_notes.map((n) => (
             <Note key={n} tone="info">🔎 {n} (corpus alias note — never a defect)</Note>
           ))}
@@ -278,7 +461,15 @@ export function EmailDetailsSheet({
           {email.comparison ? (
             <div className="flex flex-col gap-3">
               <p className="text-base font-medium tracking-tight">Field-by-field — SI (reference) vs BL</p>
-              {email.status === 'OK' && !(email.comparison.defects ?? []).length ? (
+              {shownDefects.length ? (
+                <p className="text-sm text-muted-foreground">
+                  {shownDefects.length} of 7 fields {shownDefects.length === 1 ? 'differs' : 'differ'}:{' '}
+                  <span className="font-medium text-(--status-exception)">
+                    {shownDefects.map((f) => FIELD_LABEL[f] ?? f).join(', ')}
+                  </span>
+                </p>
+              ) : null}
+              {shownStatus === 'OK' && !shownDefects.length ? (
                 <p className="rounded-xl border bg-(--status-completed)/10 px-3 py-2 text-sm font-medium text-(--status-completed)">
                   No mismatch detected.
                 </p>

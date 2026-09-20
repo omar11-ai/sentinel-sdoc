@@ -50,7 +50,7 @@ def run(inbox: Inbox | None = None, progress_cb=None) -> dict:
             si_path, bl_path = inbox.guess_si_bl(email)
             intent = no_docs_intent(body) if not attachments else "compare"
 
-            use_llm = client.available() and config.LLM_BATCH
+            use_llm = client.available() and config.LLM_BATCH and config.LLM_EXTRACT
             shaky = (cls["confidence"] < config.COURT_CONFIDENCE) or bool(cls.get("disagreement"))
 
             si_doc = extract_document(client, si_path, get_bytes, use_llm, shaky) if si_path else None

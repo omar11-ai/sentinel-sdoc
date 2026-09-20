@@ -136,7 +136,7 @@ def classify_email(client: LLMClient, email: dict, use_llm: bool | None = None) 
     cat, conf = classify_rules(subject, body)
     out = {"category": cat, "confidence": conf, "engine": "rules", "reason": "keyword cues"}
 
-    eff = (client.available() and config.LLM_BATCH) if use_llm is None else (use_llm and client.available())
+    eff = (client.available() and config.LLM_BATCH and config.LLM_CLASSIFY) if use_llm is None else (use_llm and client.available())
     if eff:
         data = client.chat_json(CLASSIFY_SYSTEM,
                                 f"Subject: {subject}\n\nBody:\n{body[:2500]}",

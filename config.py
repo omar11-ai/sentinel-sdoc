@@ -26,6 +26,8 @@ LLM_FAST_MODEL = os.getenv("SENTINEL_LLM_FAST_MODEL", "gemini-3.1-flash-lite")
 LLM_TEMPERATURE = float(os.getenv("SENTINEL_LLM_TEMP", "0"))
 LLM_CACHE = os.getenv("SENTINEL_LLM_CACHE", "1") == "1"
 LLM_BATCH = os.getenv("SENTINEL_LLM_BATCH", "1") == "1"  # LLM in full-batch runs (quota!)
+LLM_CLASSIFY = os.getenv("SENTINEL_LLM_CLASSIFY", "1") == "1"  # E7 ablation: LLM in classification
+LLM_EXTRACT = os.getenv("SENTINEL_LLM_EXTRACT", "1") == "1"    # E7 ablation: LLM in extraction
 CACHE_DIR = ROOT / ".cache" / "llm"
 
 # ---------------- Feature flags ----------------
