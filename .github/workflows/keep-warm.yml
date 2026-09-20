@@ -1,0 +1,20 @@
+name: keep-warm
+
+# Render free tier sleeps after ~15 min idle. A judge clicking the link on
+# day three must not meet a cold boot — ping every 10 minutes through the
+# judging window (and beyond; it is free and harmless).
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ping selfwarm
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 https://sentinel-sdoc.onrender.com/api/selfwarm)
+          echo "selfwarm: $code"
+          test "$code" = "200"
