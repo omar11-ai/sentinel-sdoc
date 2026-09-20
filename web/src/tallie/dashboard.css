@@ -373,11 +373,60 @@ body:has(.tallie-dashboard) [data-slot='dropdown-menu-content'] {
   animation-name: scaleToggle3;
 }
 
-/* ---- buttons: glass pills refract their backdrop ------------------ */
+/* ---- buttons: LIQUID GLASS (21st.dev LiquidButton treatment) ------
+   Backdrop melts through #container-glass (feTurbulence → blur →
+   displacement scale 70 → blur). The specular rim (inset edge stack)
+   rides on ::before so Tailwind hover shadow utilities keep working;
+   outer glow trio sits on the button itself. */
 .tallie-dashboard [data-slot='button'].backdrop-blur-xl,
 .tallie-dashboard [data-slot='button'].backdrop-blur-md {
-  backdrop-filter: url(#lg-toggler) blur(20px) saturate(1.5);
-  -webkit-backdrop-filter: url(#lg-toggler) blur(20px) saturate(1.5);
+  backdrop-filter: url(#container-glass);
+  -webkit-backdrop-filter: url(#container-glass);
+  box-shadow:
+    0 0 6px rgba(0, 0, 0, 0.03),
+    0 2px 6px rgba(0, 0, 0, 0.08),
+    0 0 12px rgba(255, 255, 255, 0.15);
+}
+.tallie-dashboard [data-slot='button'].backdrop-blur-xl::before,
+.tallie-dashboard [data-slot='button'].backdrop-blur-md::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    inset 3px 3px 0.5px -3px rgba(0, 0, 0, 0.9),
+    inset -3px -3px 0.5px -3px rgba(0, 0, 0, 0.85),
+    inset 1px 1px 1px -0.5px rgba(0, 0, 0, 0.6),
+    inset -1px -1px 1px -0.5px rgba(0, 0, 0, 0.6),
+    inset 0 0 6px 6px rgba(0, 0, 0, 0.12),
+    inset 0 0 2px 2px rgba(0, 0, 0, 0.06);
+}
+.dark .tallie-dashboard [data-slot='button'].backdrop-blur-xl,
+.dark .tallie-dashboard [data-slot='button'].backdrop-blur-md {
+  box-shadow:
+    0 0 8px rgba(0, 0, 0, 0.03),
+    0 2px 6px rgba(0, 0, 0, 0.08),
+    0 0 12px rgba(0, 0, 0, 0.15);
+}
+.dark .tallie-dashboard [data-slot='button'].backdrop-blur-xl::before,
+.dark .tallie-dashboard [data-slot='button'].backdrop-blur-md::before {
+  box-shadow:
+    inset 3px 3px 0.5px -3.5px rgba(255, 255, 255, 0.09),
+    inset -3px -3px 0.5px -3.5px rgba(255, 255, 255, 0.85),
+    inset 1px 1px 1px -0.5px rgba(255, 255, 255, 0.6),
+    inset -1px -1px 1px -0.5px rgba(255, 255, 255, 0.6),
+    inset 0 0 6px 6px rgba(255, 255, 255, 0.12),
+    inset 0 0 2px 2px rgba(255, 255, 255, 0.06);
+}
+/* liquid grow on hover / press on active — rim stays constant */
+.tallie-dashboard [data-slot='button'].backdrop-blur-xl:hover,
+.tallie-dashboard [data-slot='button'].backdrop-blur-md:hover {
+  transform: translateY(-1px) scale(1.04);
+}
+.tallie-dashboard [data-slot='button'].backdrop-blur-xl:active,
+.tallie-dashboard [data-slot='button'].backdrop-blur-md:active {
+  transform: translateY(0) scale(0.97);
 }
 
 /* ---- floating menus: stronger liquid refraction ------------------- */
