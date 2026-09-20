@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 
-export type Theme = 'dark' | 'light' | 'system'
+export type Theme = 'dark' | 'light' | 'dim' | 'system'
 
 type ThemeProviderProps = {
   children: ReactNode
@@ -39,7 +39,12 @@ export function ThemeProvider({
     if (typeof window === 'undefined') return defaultTheme
 
     const stored = localStorage.getItem(storageKey)
-    if (stored === 'light' || stored === 'dark' || stored === 'system') {
+    if (
+      stored === 'light' ||
+      stored === 'dark' ||
+      stored === 'dim' ||
+      stored === 'system'
+    ) {
       return stored
     }
 
@@ -51,13 +56,18 @@ export function ThemeProvider({
     return getSystemTheme()
   })
 
-  const resolvedTheme = theme === 'system' ? systemTheme : theme
+  const resolvedTheme: 'dark' | 'light' =
+    theme === 'system' ? systemTheme : theme === 'dim' ? 'dark' : theme
 
   useEffect(() => {
     const root = document.documentElement
-    root.classList.remove('light', 'dark')
-    root.classList.add(resolvedTheme)
-  }, [resolvedTheme])
+    root.classList.remove('light', 'dark', 'dim')
+    if (theme === 'dim') {
+      root.classList.add('dark', 'dim')
+    } else {
+      root.classList.add(resolvedTheme)
+    }
+  }, [theme, resolvedTheme])
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)')

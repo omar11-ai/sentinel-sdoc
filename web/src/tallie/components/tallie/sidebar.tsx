@@ -15,6 +15,7 @@ import {
 import { TallieLogo } from './logo'
 import { DashboardLink, useDashboardNavigation } from './navigation'
 import { useTheme } from './theme-provider'
+import { ThemeSwitcher } from '@/components/ui/apple-liquid-glass-switcher'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -132,7 +133,7 @@ function DarkModeItem() {
   const label = isDark ? 'Light Mode' : 'Dark Mode'
 
   return (
-    <SidebarMenuItem>
+    <SidebarMenuItem className="hidden group-data-[collapsible=icon]:block">
       <SidebarMenuButton
         tooltip={label}
         className={menuButtonClassName}
@@ -141,6 +142,23 @@ function DarkModeItem() {
         <ToggleIcon pressed={isDark} />
         <span>{label}</span>
       </SidebarMenuButton>
+    </SidebarMenuItem>
+  )
+}
+
+function ThemePickerItem() {
+  const { theme, resolvedTheme, setTheme } = useTheme()
+  const switcherValue =
+    theme === 'dim' ? 'dim' : theme === 'system' ? resolvedTheme : theme
+
+  return (
+    <SidebarMenuItem className="group-data-[collapsible=icon]:hidden">
+      <div className="flex h-11 items-center gap-2.5 rounded-lg px-2.5">
+        <ThemeSwitcher
+          value={switcherValue}
+          onValueChange={(next) => setTheme(next)}
+        />
+      </div>
     </SidebarMenuItem>
   )
 }
@@ -276,6 +294,7 @@ export function DashboardSidebar() {
       <SidebarFooter className="border-t border-sidebar-border px-3 py-3">
         <SidebarMenu className="gap-2">
           <HelpItem />
+          <ThemePickerItem />
           <DarkModeItem />
           <ProfileItem />
         </SidebarMenu>

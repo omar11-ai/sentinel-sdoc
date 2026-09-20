@@ -13,5 +13,8 @@ export default defineConfig({
   build: {
     outDir: '../static/app',
     emptyOutDir: true,
+    /* esbuild keeps `backdrop-filter: url(#…)` verbatim; the default
+       lightningcss minifier rewrites it to -webkit-only and Chrome drops it */
+    cssMinify: 'esbuild',
   },
 })

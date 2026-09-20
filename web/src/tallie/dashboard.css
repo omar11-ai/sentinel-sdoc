@@ -281,3 +281,146 @@ body:has(.tallie-dashboard) [data-slot='dropdown-menu-content'] {
 .tallie-dashboard {
   font-family: var(--font-sans);
 }
+
+/* ================================================================
+   APPLE LIQUID GLASS — real refraction (SVG displacement map)
+   #lg-switcher / #lg-toggler are mounted once app-wide via
+   <LiquidGlassDefs /> (components/ui/apple-liquid-glass-switcher.tsx):
+   feImage(webp map) → feGaussianBlur → feDisplacementMap(scale .5).
+   ================================================================ */
+
+/* ---- theme switcher (sidebar) ------------------------------------ */
+.switcher {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+  padding: 3px;
+  min-inline-size: 0;
+  border: 1px solid var(--sidebar-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sidebar) 42%, transparent);
+  backdrop-filter: url(#lg-switcher) blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: url(#lg-switcher) blur(14px) saturate(1.4);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--foreground) 18%, transparent),
+    0 4px 14px rgba(10, 10, 8, 0.12);
+}
+.switcher__legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.switcher__option {
+  position: relative;
+  display: grid;
+  place-items: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.2s ease-out;
+}
+.switcher__option:hover { transform: scale(1.07); }
+.switcher__input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.switcher__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  --c: color-mix(in srgb, var(--foreground) 38%, transparent);
+}
+.switcher__option:has(input:checked) .switcher__icon { --c: var(--foreground); }
+.switcher__option:has(input:focus-visible) {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.switcher__option::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.18s ease-out;
+}
+.switcher__option:has(input:checked)::before {
+  opacity: 1;
+  transform: scale(1);
+  background: color-mix(in srgb, var(--foreground) 12%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--foreground) 22%, transparent),
+    0 1px 5px rgba(10, 10, 8, 0.16);
+  backdrop-filter: url(#lg-toggler) blur(6px);
+  -webkit-backdrop-filter: url(#lg-toggler) blur(6px);
+  animation: scaleToggle 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+/* animation flavour follows the option you came FROM (data-previous) */
+.switcher[data-previous='dark'] .switcher__option:has(input:checked)::before {
+  animation-name: scaleToggle2;
+}
+.switcher[data-previous='dim'] .switcher__option:has(input:checked)::before {
+  animation-name: scaleToggle3;
+}
+
+/* ---- buttons: glass pills refract their backdrop ------------------ */
+.tallie-dashboard [data-slot='button'].backdrop-blur-xl,
+.tallie-dashboard [data-slot='button'].backdrop-blur-md {
+  backdrop-filter: url(#lg-toggler) blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: url(#lg-toggler) blur(20px) saturate(1.5);
+}
+
+/* ---- floating menus: stronger liquid refraction ------------------- */
+body:has(.tallie-dashboard) [data-slot='dropdown-menu-content'],
+body:has(.tallie-dashboard) [data-slot='popover-content'] {
+  backdrop-filter: url(#lg-switcher) blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: url(#lg-switcher) blur(18px) saturate(1.2);
+}
+body:has(.tallie-dashboard) [data-slot='sheet-content'] {
+  backdrop-filter: url(#lg-toggler) blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: url(#lg-toggler) blur(18px) saturate(1.15);
+}
+body:has(.tallie-dashboard) [data-slot='dropdown-menu-content'] {
+  background: color-mix(in srgb, var(--popover) 74%, transparent) !important;
+}
+body:has(.tallie-dashboard) [data-slot='popover-content'] {
+  background: color-mix(in srgb, var(--popover) 80%, transparent) !important;
+}
+
+/* ---- DIM — Apple-style third stop between light and dark ----------
+   html.dim always also carries .dark (dim resolves dark for utilities);
+   these overrides lift the surfaces a touch warmer/lighter. */
+html.dim .tallie-dashboard,
+html.dim body:has(.tallie-dashboard) [data-slot='sidebar'][data-mobile='true'],
+html.dim body:has(.tallie-dashboard) [data-slot='sheet-content'],
+html.dim body:has(.tallie-dashboard) [data-slot='dropdown-menu-content'],
+html.dim body:has(.tallie-dashboard) [data-slot='tooltip-content'] {
+  --background: #201c16;
+  --card: rgba(52, 47, 38, 0.6);
+  --popover: #2a251d;
+  --foreground: #efe9da;
+  --card-foreground: #efe9da;
+  --popover-foreground: #efe9da;
+  --secondary: #332d24;
+  --secondary-foreground: #efe9da;
+  --muted: #332d24;
+  --muted-foreground: #b3ad9a;
+  --accent: #3a3328;
+  --accent-foreground: #efe9da;
+  --border: rgba(225, 224, 204, 0.17);
+  --input: rgba(225, 224, 204, 0.19);
+  --sidebar: #2b261e;
+  --sidebar-foreground: #e6e1d0;
+  --sidebar-accent: #38321f;
+  --sidebar-border: rgba(225, 224, 204, 0.14);
+}

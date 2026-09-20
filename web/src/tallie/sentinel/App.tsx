@@ -10,6 +10,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { CinematicShell } from './cinematic/CinematicShell'
 import { SentinelProvider, useSentinel } from './context'
 import { SearchProvider } from './search'
+import { LiquidGlassDefs } from '@/components/ui/apple-liquid-glass-switcher'
 
 /* mirror the internal router state to the URL hash (deep-linkable views) */
 function HashSync() {
@@ -78,6 +79,7 @@ export default function SentinelApp() {
         <SearchProvider>
           <DashboardNavigationProvider>
             <HashSync />
+            <LiquidGlassDefs />
             <DashboardRoute />
           </DashboardNavigationProvider>
         </SearchProvider>

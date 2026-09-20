@@ -243,3 +243,22 @@
   animation-range: 0 var(--scroll-buffer), calc(100% - var(--scroll-buffer)) 100%;
   animation-fill-mode: both;
 }
+
+/* ================================================================
+   Apple liquid glass — scale pop keyframes (theme switcher blob)
+   ================================================================ */
+@keyframes scaleToggle {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+@keyframes scaleToggle2 {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+@keyframes scaleToggle3 {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
